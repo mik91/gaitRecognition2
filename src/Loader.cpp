@@ -1,10 +1,11 @@
 #include "Loader.h"
 #include <sstream>
 #include <iomanip>
+#include <regex>
 
 namespace gait {
 
-gait::Loader::Loader(const std::string& datasetPath) 
+Loader::Loader(const std::string& datasetPath) 
     : datasetPath_(datasetPath) {
     scanDataset();
 }
@@ -16,7 +17,7 @@ void Loader::scanDataset() {
     // Standard conditions
     conditions_ = {"bg", "cl", "nm"};
     
-    // Verify directories exist
+    // Verify directories exist and scan for actual structure
     for (const auto& subject : subjectIds_) {
         fs::path subjectPath = fs::path(datasetPath_) / subject;
         if (!fs::exists(subjectPath)) {
@@ -34,18 +35,35 @@ std::vector<cv::Mat> Loader::loadSequence(
     std::string sequencePath = condition + "-" + formatNumber(sequenceNumber, 2);
     fs::path fullPath = fs::path(datasetPath_) / subjectId / sequencePath;
     
+    std::cout << "Checking sequence path: " << fullPath << std::endl;
+    
     if (!fs::exists(fullPath)) {
         throw std::runtime_error("Sequence path does not exist: " + fullPath.string());
     }
     
     // Load frames
     for (int frameNum = 0; frameNum <= 180; frameNum += 18) {
-        std::string framePath = (fullPath / formatNumber(frameNum, 3)).string() + ".png";
+        // Create the frame directory path
+        fs::path frameDir = fullPath / formatNumber(frameNum, 3);
         
-        if (fs::exists(framePath)) {
-            cv::Mat frame = cv::imread(framePath);
-            if (!frame.empty()) {
-                frames.push_back(frame);
+        // Pattern for frame files
+        std::string prefix = "001-" + condition + "-" + 
+                           formatNumber(sequenceNumber, 2) + "-" +
+                           formatNumber(frameNum, 3);
+                           
+        std::cout << "Looking for frames with prefix: " << prefix << " in " << frameDir << std::endl;
+        
+        if (fs::exists(frameDir) && fs::is_directory(frameDir)) {
+            for (const auto& entry : fs::directory_iterator(frameDir)) {
+                if (entry.path().extension() == ".png" && 
+                    entry.path().filename().string().find(prefix) == 0) {
+                    std::cout << "Loading frame: " << entry.path() << std::endl;
+                    cv::Mat frame = cv::imread(entry.path().string());
+                    if (!frame.empty()) {
+                        frames.push_back(frame);
+                        break;  // Take the first matching frame
+                    }
+                }
             }
         }
     }
@@ -81,17 +99,34 @@ std::vector<int> Loader::getSequenceNumbers(
     std::vector<int> sequences;
     fs::path subjectPath = fs::path(datasetPath_) / subjectId;
     
+    // Regular expression to match sequence directories (e.g., "bg-01", "nm-02")
+    std::regex sequencePattern(condition + "-([0-9]{2})");
+    
     if (!fs::exists(subjectPath)) {
         return sequences;
     }
     
-    for (int seq = 1; seq <= 6; ++seq) {
-        std::string seqDir = condition + "-" + formatNumber(seq, 2);
-        if (fs::exists(subjectPath / seqDir)) {
-            sequences.push_back(seq);
+    // Scan for sequence directories
+    for (const auto& entry : fs::directory_iterator(subjectPath)) {
+        if (fs::is_directory(entry)) {
+            std::string dirName = entry.path().filename().string();
+            std::smatch matches;
+            if (std::regex_match(dirName, matches, sequencePattern)) {
+                if (matches.size() > 1) {
+                    try {
+                        int seqNum = std::stoi(matches[1]);
+                        sequences.push_back(seqNum);
+                    } catch (...) {
+                        // Skip invalid sequence numbers
+                        continue;
+                    }
+                }
+            }
         }
     }
     
+    // Sort sequence numbers
+    std::sort(sequences.begin(), sequences.end());
     return sequences;
 }
 
