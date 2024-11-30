@@ -2,11 +2,13 @@
 namespace fs = std::filesystem;
 #include <iostream>
 #include <vector>
+#include "Loader.h"
 
 
 int main() {
     std::cout << "Loading images for subject test..." << std::endl;
-    std::vector<std::string> subjectIds = {"test", "test2", "test3"};
+    gait::Loader loader;
 
+    auto sequences = loader.loadSequence("test", "bg", 1);
     return 0;
 }
