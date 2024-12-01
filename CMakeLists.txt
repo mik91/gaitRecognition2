@@ -13,7 +13,8 @@ include_directories(include)
 # Add source files
 add_executable(
     ${PROJECT_NAME}
-    #src/GaitAnalyzer.cpp
+    src/GaitClassifier.cpp
+    src/GaitAnalyzer.cpp
     src/Loader.cpp
     src/main.cpp
 )
