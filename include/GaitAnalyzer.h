@@ -1,9 +1,10 @@
 #pragma once
 
+#define _USE_MATH_DEFINES  // For M_PI in Windows
+#include <cmath>
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <tuple>
-#include <cmath>
 
 namespace gait {
 
@@ -46,13 +47,5 @@ private:
     std::vector<double> previousFeatures_;
 };
 
-// Optional: Utility functions for data visualization
-namespace visualization {
-    cv::Mat visualizeSymmetryMap(const cv::Mat& symmetryMap);
-    cv::Mat visualizeGaitFeatures(const std::vector<double>& features);
-    void plotFeatureDistribution(
-        const std::vector<std::vector<double>>& normalFeatures,
-        const std::vector<std::vector<double>>& abnormalFeatures);
-}
-
+// Visualization namespace declaration moved to separate header
 } // namespace gait
