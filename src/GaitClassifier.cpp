@@ -1,226 +1,176 @@
-#include <opencv2/ml.hpp>
-#include <vector>
-#include <string>
-#include "GaitAnalyzer.h"
+#include "GaitClassifier.h"
+#include <iostream>
+#include <sstream>
+#include <limits>
+#include <cmath>
 
 namespace gait {
 
-class GaitClassifier {
-public:
-    // Enum to represent different gait types
-    enum class GaitType {
-        NORMAL,
-        ABNORMAL
-    };
+GaitClassifier::GaitClassifier() : isModelTrained_(false) {}
 
-    GaitClassifier() : isModelTrained_(false) {
-        // Initialize SVM with optimal parameters for gait classification
-        svm_ = cv::ml::SVM::create();
-        svm_->setType(cv::ml::SVM::C_SVC);
-        svm_->setKernel(cv::ml::SVM::RBF);
-        svm_->setTermCriteria(cv::TermCriteria(
-            cv::TermCriteria::MAX_ITER + cv::TermCriteria::EPS,
-            1000, 1e-6));
-    }
+bool GaitClassifier::analyzePatterns(const std::map<std::string, std::vector<std::vector<double>>>& personFeatures) {
+    if (personFeatures.empty()) return false;
 
-    // Train the classifier with labeled data
-    bool train(const std::vector<std::vector<double>>& features, 
-               const std::vector<GaitType>& labels) {
-        if (features.empty() || features.size() != labels.size()) {
-            return false;
-        }
-
-        // Convert features and labels to OpenCV matrices
-        cv::Mat featuresMat(features.size(), features[0].size(), CV_32F);
-        cv::Mat labelsMat(labels.size(), 1, CV_32S);
-
-        // Fill the matrices
-        for (size_t i = 0; i < features.size(); i++) {
-            for (size_t j = 0; j < features[i].size(); j++) {
-                featuresMat.at<float>(i, j) = static_cast<float>(features[i][j]);
-            }
-            labelsMat.at<int>(i) = (labels[i] == GaitType::NORMAL) ? 1 : -1;
-        }
-
-        // Train the SVM
-        try {
-            svm_->train(featuresMat, cv::ml::ROW_SAMPLE, labelsMat);
-            isModelTrained_ = true;
-            return true;
-        } catch (const cv::Exception& e) {
-            std::cerr << "Training error: " << e.what() << std::endl;
-            return false;
-        }
-    }
-
-    // Classify a single sequence of gait features
-    GaitType classify(const std::vector<double>& features) {
-        if (!isModelTrained_ || features.empty()) {
-            throw std::runtime_error("Model not trained or invalid features");
-        }
-
-        // Convert features to OpenCV matrix
-        cv::Mat featureMat(1, features.size(), CV_32F);
-        for (size_t i = 0; i < features.size(); i++) {
-            featureMat.at<float>(0, i) = static_cast<float>(features[i]);
-        }
-
-        // Predict using SVM
-        float response = svm_->predict(featureMat);
-        return (response > 0) ? GaitType::NORMAL : GaitType::ABNORMAL;
-    }
-
-    // Get confidence score for classification
-    double getConfidence(const std::vector<double>& features) {
-        if (!isModelTrained_ || features.empty()) {
-            return 0.0;
-        }
-
-        cv::Mat featureMat(1, features.size(), CV_32F);
-        for (size_t i = 0; i < features.size(); i++) {
-            featureMat.at<float>(0, i) = static_cast<float>(features[i]);
-        }
-
-        // Get confidence score using decision function
-        cv::Mat results;
-        svm_->predict(featureMat, results, cv::ml::StatModel::RAW_OUTPUT);
-        return std::abs(results.at<float>(0, 0));
-    }
-
-    // Save trained model
-    bool saveModel(const std::string& filename) {
-        if (!isModelTrained_) {
-            return false;
-        }
-        try {
-            svm_->save(filename);
-            return true;
-        } catch (const cv::Exception& e) {
-            std::cerr << "Error saving model: " << e.what() << std::endl;
-            return false;
-        }
-    }
-
-    // Load trained model
-    bool loadModel(const std::string& filename) {
-        try {
-            svm_ = cv::ml::SVM::load(filename);
-            isModelTrained_ = true;
-            return true;
-        } catch (const cv::Exception& e) {
-            std::cerr << "Error loading model: " << e.what() << std::endl;
-            return false;
-        }
-    }
-
-private:
-    cv::Ptr<cv::ml::SVM> svm_;
-    bool isModelTrained_;
-};
-
-// Utility class to combine analysis and classification
-class GaitAnalysisSystem {
-public:
-    GaitAnalysisSystem(const SymmetryParams& params) 
-        : analyzer_(params) {}
-
-    // Process a sequence of frames and classify the gait
-    GaitClassifier::GaitType analyzeSequence(
-        const std::vector<cv::Mat>& frames,
-        double& confidence) {
-        
-        std::vector<double> aggregatedFeatures;
-        
-        // Process each frame and accumulate features
-        for (const auto& frame : frames) {
-            cv::Mat symmetryMap = analyzer_.processFrame(frame);
-            auto frameFeatures = analyzer_.extractGaitFeatures(symmetryMap);
-            
-            // Initialize or update aggregated features
-            if (aggregatedFeatures.empty()) {
-                aggregatedFeatures = frameFeatures;
-            } else {
-                for (size_t i = 0; i < frameFeatures.size(); i++) {
-                    aggregatedFeatures[i] += frameFeatures[i];
-                }
-            }
-        }
-
-        // Average the features
-        for (auto& feature : aggregatedFeatures) {
-            feature /= frames.size();
-        }
-
-        // Get classification and confidence
-        confidence = classifier_.getConfidence(aggregatedFeatures);
-        return classifier_.classify(aggregatedFeatures);
-    }
-
-    // Train the classifier
-    bool trainClassifier(
-        const std::vector<std::vector<cv::Mat>>& normalSequences,
-        const std::vector<std::vector<cv::Mat>>& abnormalSequences) {
-        
+    try {
+        // Convert to training format
         std::vector<std::vector<double>> allFeatures;
-        std::vector<GaitClassifier::GaitType> labels;
-
-        // Process normal sequences
-        processSequencesForTraining(normalSequences, 
-                                  GaitClassifier::GaitType::NORMAL,
-                                  allFeatures, labels);
-
-        // Process abnormal sequences
-        processSequencesForTraining(abnormalSequences, 
-                                  GaitClassifier::GaitType::ABNORMAL,
-                                  allFeatures, labels);
-
-        // Train the classifier
-        return classifier_.train(allFeatures, labels);
-    }
-
-    bool saveClassifier(const std::string& filename) {
-        return classifier_.saveModel(filename);
-    }
-
-    bool loadClassifier(const std::string& filename) {
-        return classifier_.loadModel(filename);
-    }
-
-private:
-    GaitAnalyzer analyzer_;
-    GaitClassifier classifier_;
-
-    void processSequencesForTraining(
-        const std::vector<std::vector<cv::Mat>>& sequences,
-        GaitClassifier::GaitType label,
-        std::vector<std::vector<double>>& allFeatures,
-        std::vector<GaitClassifier::GaitType>& labels) {
+        std::vector<std::string> labels;
         
-        for (const auto& sequence : sequences) {
-            std::vector<double> aggregatedFeatures;
-            
-            for (const auto& frame : sequence) {
-                cv::Mat symmetryMap = analyzer_.processFrame(frame);
-                auto frameFeatures = analyzer_.extractGaitFeatures(symmetryMap);
-                
-                if (aggregatedFeatures.empty()) {
-                    aggregatedFeatures = frameFeatures;
-                } else {
-                    for (size_t i = 0; i < frameFeatures.size(); i++) {
-                        aggregatedFeatures[i] += frameFeatures[i];
-                    }
-                }
+        // Process each person's sequences
+        for (const auto& [personId, sequences] : personFeatures) {
+            for (const auto& sequence : sequences) {
+                allFeatures.push_back(sequence);
+                labels.push_back(personId);
             }
+        }
 
-            // Average the features
-            for (auto& feature : aggregatedFeatures) {
-                feature /= sequence.size();
+        // Print debug info
+        std::cout << "Training data:\n"
+                 << "Number of people: " << personFeatures.size() << "\n"
+                 << "Total sequences: " << allFeatures.size() << "\n";
+
+        // Store data for classification
+        trainingData_ = allFeatures;
+        trainingLabels_ = labels;
+        isModelTrained_ = true;
+        
+        // Create visualization window
+        visualizeTrainingData();
+        
+        return true;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error in analyzePatterns: " << e.what() << "\n";
+        return false;
+    }
+}
+
+std::pair<std::string, double> GaitClassifier::identifyPerson(const std::vector<double>& testSequence) {
+    if (!isModelTrained_ || trainingData_.empty()) {
+        return {"unknown", 0.0};
+    }
+
+    try {
+        // Find nearest neighbor
+        double minDistance = std::numeric_limits<double>::max();
+        std::string bestMatch;
+
+        for (size_t i = 0; i < trainingData_.size(); i++) {
+            double distance = computeDistance(testSequence, trainingData_[i]);
+            if (distance < minDistance) {
+                minDistance = distance;
+                bestMatch = trainingLabels_[i];
             }
+        }
 
-            allFeatures.push_back(aggregatedFeatures);
-            labels.push_back(label);
+        // Convert distance to similarity score
+        double similarity = 1.0 / (1.0 + minDistance);
+        
+        // Visualize result
+        visualizeClassification(testSequence);
+        
+        return {bestMatch, similarity};
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error in identifyPerson: " << e.what() << "\n";
+        return {"unknown", 0.0};
+    }
+}
+
+void GaitClassifier::visualizeTrainingData(const std::string& windowName) {
+    if (!isModelTrained_) return;
+
+    // Create visualization window
+    cv::namedWindow(windowName, cv::WINDOW_NORMAL);
+    
+    // Create visualization matrix
+    int width = 800, height = 400;
+    cv::Mat vis = cv::Mat::zeros(height, width, CV_8UC3);
+    
+    // Get unique labels
+    std::set<std::string> uniqueLabels(trainingLabels_.begin(), trainingLabels_.end());
+    std::map<std::string, cv::Scalar> colorMap;
+    int colorIdx = 0;
+    for (const auto& label : uniqueLabels) {
+        cv::Scalar color(
+            (colorIdx * 90) % 255,
+            (colorIdx * 150) % 255,
+            (colorIdx * 200) % 255
+        );
+        colorMap[label] = color;
+        colorIdx++;
+    }
+    
+    // Plot features
+    for (size_t i = 0; i < trainingData_.size(); i++) {
+        const auto& features = trainingData_[i];
+        const auto& label = trainingLabels_[i];
+        
+        // Plot first two dimensions of features
+        if (features.size() >= 2) {
+            int x = static_cast<int>(features[0] * (width - 20)) + 10;
+            int y = static_cast<int>(features[1] * (height - 20)) + 10;
+            cv::circle(vis, cv::Point(x, y), 5, colorMap[label], -1);
         }
     }
-};
+    
+    // Show visualization
+    cv::imshow(windowName, vis);
+    cv::waitKey(1);
+}
+
+void GaitClassifier::visualizeClassification(const std::vector<double>& testSequence, 
+                                           const std::string& windowName) {
+    // Create visualization matrix
+    int width = 800, height = 400;
+    cv::Mat vis = cv::Mat::zeros(height, width, CV_8UC3);
+    
+    // Plot training data points
+    for (size_t i = 0; i < trainingData_.size(); i++) {
+        const auto& features = trainingData_[i];
+        if (features.size() >= 2) {
+            int x = static_cast<int>(features[0] * (width - 20)) + 10;
+            int y = static_cast<int>(features[1] * (height - 20)) + 10;
+            cv::circle(vis, cv::Point(x, y), 5, cv::Scalar(0, 255, 0), -1);
+        }
+    }
+    
+    // Plot test sequence point in red
+    if (testSequence.size() >= 2) {
+        int x = static_cast<int>(testSequence[0] * (width - 20)) + 10;
+        int y = static_cast<int>(testSequence[1] * (height - 20)) + 10;
+        cv::circle(vis, cv::Point(x, y), 7, cv::Scalar(0, 0, 255), -1);
+    }
+    
+    // Show visualization
+    cv::imshow(windowName, vis);
+    cv::waitKey(1);
+}
+
+double GaitClassifier::computeDistance(const std::vector<double>& seq1, const std::vector<double>& seq2) {
+    if (seq1.size() != seq2.size()) {
+        throw std::runtime_error("Feature vector size mismatch");
+    }
+
+    double sumSquaredDiff = 0.0;
+    for (size_t i = 0; i < seq1.size(); i++) {
+        double diff = seq1[i] - seq2[i];
+        sumSquaredDiff += diff * diff;
+    }
+    return std::sqrt(sumSquaredDiff);
+}
+
+std::string GaitClassifier::getClusterStats() const {
+    std::stringstream ss;
+    ss << "Cluster Statistics:\n";
+    for (size_t i = 0; i < clusterStats_.size(); i++) {
+        ss << "Cluster " << (i == 0 ? "A" : "B") << ":\n";
+        ss << " Size: " << clusterStats_[i].size << "\n";
+        ss << " Average Distance to Center: " << clusterStats_[i].avgDistance << "\n";
+        ss << " Max Distance to Center: " << clusterStats_[i].maxDistance << "\n";
+        ss << " Variance: " << clusterStats_[i].variance << "\n";
+    }
+    return ss.str();
+}
 
 } // namespace gait

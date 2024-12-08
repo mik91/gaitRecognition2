@@ -1,0 +1,320 @@
+[ INFO:0@0.003] global registry.impl.hpp:114 cv::highgui_backend::UIBackendRegistry::UIBackendRegistry UI: Enabled backends(4, sorted by priority): GTK(1000); GTK3(990); GTK2(980); WIN32(970) + BUILTIN(WIN32UI)
+[ INFO:0@0.004] global plugin_loader.impl.hpp:67 cv::plugin::impl::DynamicLib::libraryLoad load C:\openCV\build\x64\vc16\bin\opencv_highgui_gtk4100_64.dll => FAILED
+[ INFO:0@0.005] global plugin_loader.impl.hpp:67 cv::plugin::impl::DynamicLib::libraryLoad load opencv_highgui_gtk4100_64.dll => FAILED
+[ INFO:0@0.005] global plugin_loader.impl.hpp:67 cv::plugin::impl::DynamicLib::libraryLoad load C:\openCV\build\x64\vc16\bin\opencv_highgui_gtk34100_64.dll => FAILED
+[ INFO:0@0.006] global plugin_loader.impl.hpp:67 cv::plugin::impl::DynamicLib::libraryLoad load opencv_highgui_gtk34100_64.dll => FAILED
+[ INFO:0@0.007] global plugin_loader.impl.hpp:67 cv::plugin::impl::DynamicLib::libraryLoad load C:\openCV\build\x64\vc16\bin\opencv_highgui_gtk24100_64.dll => FAILED
+[ INFO:0@0.008] global plugin_loader.impl.hpp:67 cv::plugin::impl::DynamicLib::libraryLoad load opencv_highgui_gtk24100_64.dll => FAILED
+[ INFO:0@0.008] global backend.cpp:90 cv::highgui_backend::createUIBackend UI: using backend: WIN32 (priority=970)
+[ INFO:0@0.008] global window_w32.cpp:2993 cv::impl::Win32BackendUI::createWindow OpenCV/UI: Creating Win32UI window: Original Frame (0)
+[ INFO:0@0.048] global window_w32.cpp:2993 cv::impl::Win32BackendUI::createWindow OpenCV/UI: Creating Win32UI window: Symmetry Map (0)
+[ INFO:0@0.062] global window_w32.cpp:2993 cv::impl::Win32BackendUI::createWindow OpenCV/UI: Creating Win32UI window: Features (0)
+Checking sequence path: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01"
+Looking for frames with prefix: 001-nm-01-000 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\000"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\000\\001-nm-01-000-001.png"
+Looking for frames with prefix: 001-nm-01-018 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\018"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\018\\001-nm-01-018-001.png"
+Looking for frames with prefix: 001-nm-01-036 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\036"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\036\\001-nm-01-036-001.png"
+Looking for frames with prefix: 001-nm-01-054 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\054"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\054\\001-nm-01-054-013.png"
+Looking for frames with prefix: 001-nm-01-072 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\072"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\072\\001-nm-01-072-037.png"
+Looking for frames with prefix: 001-nm-01-090 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\090"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\090\\001-nm-01-090-047.png"
+Looking for frames with prefix: 001-nm-01-108 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\108"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\108\\001-nm-01-108-045.png"
+Looking for frames with prefix: 001-nm-01-126 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\126"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\126\\001-nm-01-126-036.png"
+Looking for frames with prefix: 001-nm-01-144 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\144"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\144\\001-nm-01-144-042.png"
+Looking for frames with prefix: 001-nm-01-162 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\162"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\162\\001-nm-01-162-041.png"
+Looking for frames with prefix: 001-nm-01-180 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\180"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\nm-01\\180\\001-nm-01-180-037.png"
+Processing test sequence nm (11 frames)
+Regional features before normalization - Range: [1.79769e+308, -1.79769e+308]
+Regional features after normalization - First 5 values: 0.5 0.5 0.5 0.5 ...
+Temporal features - Not enough frames, using zeros
+Temporal features before normalization - Range: [1.79769e+308, -1.79769e+308]
+Temporal features after normalization - First 5 values: 0.5 0.5 0.5 ...
+Fourier features before normalization - Range: [1.79769e+308, -1.79769e+308]
+Fourier features after normalization - First 5 values: 0.5 0.5 0.5 0.5 0.5 ...
+Regional features before normalization - Range: [2.44751e-09, 8.49429e-06]
+Regional features after normalization - First 5 values: 0.0599848 1 0 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.00657552
+  Mean difference: 2.25197e-06
+  StdDev of difference: 4.05824e-05
+Temporal features before normalization - Range: [2.25197e-06, 0.00657552]
+Temporal features after normalization - First 5 values: 1 0 0.00583125 ...
+Fourier features before normalization - Range: [0.0250035, 1]
+Fourier features after normalization - First 5 values: 0.00479642 0.00504465 0.00270967 0 0.00220277 ...
+Regional features before normalization - Range: [2.44751e-09, 8.49268e-06]
+Regional features after normalization - First 5 values: 0.0599426 1 0 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.0066276
+  Mean difference: 5.17394e-10
+  StdDev of difference: 8.78103e-09
+Temporal features before normalization - Range: [5.17394e-10, 0.0066276]
+Temporal features after normalization - First 5 values: 1 0 1.24685e-06 ...
+Fourier features before normalization - Range: [0.0250065, 1]
+Fourier features after normalization - First 5 values: 0.00479571 0.00504285 0.00270656 0 0.00220073 ...
+Regional features before normalization - Range: [2.44751e-09, 8.49268e-06]
+Regional features after normalization - First 5 values: 0.0599426 1 0 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.00722656
+  Mean difference: 2.76934e-15
+  StdDev of difference: 4.45273e-14
+Temporal features before normalization - Range: [2.76934e-15, 0.00722656]
+Temporal features after normalization - First 5 values: 1 0 5.7784e-12 ...
+Fourier features before normalization - Range: [0.0250065, 1]
+Fourier features after normalization - First 5 values: 0.00479571 0.00504285 0.00270656 0 0.00220073 ...
+Regional features before normalization - Range: [2.44751e-09, 8.49268e-06]
+Regional features after normalization - First 5 values: 0.0599426 1 0 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.0058724
+  Mean difference: 5.78891e-18
+  StdDev of difference: 1.21202e-16
+Temporal features before normalization - Range: [5.78891e-18, 0.0058724]
+Temporal features after normalization - First 5 values: 1 0 1.96534e-14 ...
+Fourier features before normalization - Range: [0.0250065, 1]
+Fourier features after normalization - First 5 values: 0.00479571 0.00504285 0.00270656 0 0.00220073 ...
+Regional features before normalization - Range: [2.44751e-09, 8.49268e-06]
+Regional features after normalization - First 5 values: 0.0599426 1 0 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.00835938
+  Mean difference: 1.0958e-17
+  StdDev of difference: 1.81097e-16
+Temporal features before normalization - Range: [1.0958e-17, 0.00835938]
+Temporal features after normalization - First 5 values: 1 0 2.03531e-14 ...
+Fourier features before normalization - Range: [0.0250065, 1]
+Fourier features after normalization - First 5 values: 0.00479571 0.00504285 0.00270656 0 0.00220073 ...
+Regional features before normalization - Range: [2.44751e-09, 8.49268e-06]
+Regional features after normalization - First 5 values: 0.0599426 1 0 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.00738281
+  Mean difference: 7.66816e-18
+  StdDev of difference: 1.43888e-16
+Temporal features before normalization - Range: [7.66816e-18, 0.00738281]
+Temporal features after normalization - First 5 values: 1 0 1.8451e-14 ...
+Fourier features before normalization - Range: [0.0250065, 1]
+Fourier features after normalization - First 5 values: 0.00479571 0.00504285 0.00270656 0 0.00220073 ...
+Regional features before normalization - Range: [2.44751e-09, 8.49268e-06]
+Regional features after normalization - First 5 values: 0.0599426 1 0 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.0053776
+  Mean difference: 2.47886e-18
+  StdDev of difference: 5.71034e-17
+Temporal features before normalization - Range: [2.47886e-18, 0.0053776]
+Temporal features after normalization - First 5 values: 1 0 1.01578e-14 ...
+Fourier features before normalization - Range: [0.0250065, 1]
+Fourier features after normalization - First 5 values: 0.00479571 0.00504285 0.00270656 0 0.00220073 ...
+Regional features before normalization - Range: [2.44751e-09, 8.49268e-06]
+Regional features after normalization - First 5 values: 0.0599426 1 0 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.00894531
+  Mean difference: 2.85285e-16
+  StdDev of difference: 4.18796e-15
+Temporal features before normalization - Range: [2.85285e-16, 0.00894531]
+Temporal features after normalization - First 5 values: 1 0 4.36281e-13 ...
+Fourier features before normalization - Range: [0.0250065, 1]
+Fourier features after normalization - First 5 values: 0.00479571 0.00504285 0.00270656 0 0.00220073 ...
+Regional features before normalization - Range: [7.21138e-16, 8.50337e-06]
+Regional features after normalization - First 5 values: 0.0602245 1 0.000312614 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.000976562
+  Mean difference: 2.90976e-09
+  StdDev of difference: 1.23845e-07
+Temporal features before normalization - Range: [2.90976e-09, 0.000976562]
+Temporal features after normalization - First 5 values: 1 0 0.000123838 ...
+Fourier features before normalization - Range: [0.0249547, 1]
+Fourier features after normalization - First 5 values: 0.00473997 0.00507433 0.00273375 0 0.00223063 ...
+Regional features before normalization - Range: [6.86863e-12, 1.88615e-05]
+Regional features after normalization - First 5 values: 0.562993 1 0.00935218 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.0144531
+  Mean difference: 6.20767e-06
+  StdDev of difference: 6.59951e-05
+Temporal features before normalization - Range: [6.20767e-06, 0.0144531]
+Temporal features after normalization - First 5 values: 1 0 0.00413842 ...
+Fourier features before normalization - Range: [0.0535667, 1]
+Fourier features after normalization - First 5 values: 0.0502074 0 0.0278771 0.0192154 0.067228 ...
+Added features for test sequence nm:
+Feature vector size: 124
+[ INFO:0@2.300] global registry_parallel.impl.hpp:96 cv::parallel::ParallelBackendRegistry::ParallelBackendRegistry core(parallel): Enabled backends(3, sorted by priority): ONETBB(1000); TBB(990); OPENMP(980)
+[ INFO:0@2.300] global plugin_loader.impl.hpp:67 cv::plugin::impl::DynamicLib::libraryLoad load C:\openCV\build\x64\vc16\bin\opencv_core_parallel_onetbb4100_64d.dll => FAILED
+[ INFO:0@2.302] global plugin_loader.impl.hpp:67 cv::plugin::impl::DynamicLib::libraryLoad load opencv_core_parallel_onetbb4100_64d.dll => FAILED
+[ INFO:0@2.302] global plugin_loader.impl.hpp:67 cv::plugin::impl::DynamicLib::libraryLoad load C:\openCV\build\x64\vc16\bin\opencv_core_parallel_tbb4100_64d.dll => FAILED
+[ INFO:0@2.304] global plugin_loader.impl.hpp:67 cv::plugin::impl::DynamicLib::libraryLoad load opencv_core_parallel_tbb4100_64d.dll => FAILED
+[ INFO:0@2.304] global plugin_loader.impl.hpp:67 cv::plugin::impl::DynamicLib::libraryLoad load C:\openCV\build\x64\vc16\bin\opencv_core_parallel_openmp4100_64d.dll => FAILED
+[ INFO:0@2.306] global plugin_loader.impl.hpp:67 cv::plugin::impl::DynamicLib::libraryLoad load opencv_core_parallel_openmp4100_64d.dll => FAILED
+Checking sequence path: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01"
+Looking for frames with prefix: 001-bg-01-000 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\000"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\000\\001-bg-01-000-001.png"
+Looking for frames with prefix: 001-bg-01-018 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\018"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\018\\001-bg-01-018-001.png"
+Looking for frames with prefix: 001-bg-01-036 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\036"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\036\\001-bg-01-036-001.png"
+Looking for frames with prefix: 001-bg-01-054 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\054"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\054\\001-bg-01-054-007.png"
+Looking for frames with prefix: 001-bg-01-072 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\072"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\072\\001-bg-01-072-031.png"
+Looking for frames with prefix: 001-bg-01-090 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\090"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\090\\001-bg-01-090-035.png"
+Looking for frames with prefix: 001-bg-01-108 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\108"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\108\\001-bg-01-108-032.png"
+Looking for frames with prefix: 001-bg-01-126 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\126"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\126\\001-bg-01-126-033.png"
+Looking for frames with prefix: 001-bg-01-144 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\144"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\144\\001-bg-01-144-028.png"
+Looking for frames with prefix: 001-bg-01-162 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\162"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\162\\001-bg-01-162-025.png"
+Looking for frames with prefix: 001-bg-01-180 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\180"
+Loading frame: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test\\bg-01\\180\\001-bg-01-180-030.png"
+Processing test sequence bg (11 frames)
+Regional features before normalization - Range: [2.53636e-09, 8.18706e-07]
+Regional features after normalization - First 5 values: 1 0.51847 0 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.0158724
+  Mean difference: 7.27937e-06
+  StdDev of difference: 7.28487e-05
+Temporal features before normalization - Range: [7.27937e-06, 0.0158724]
+Temporal features after normalization - First 5 values: 1 0 0.00413293 ...
+Fourier features before normalization - Range: [0.00204583, 1]
+Fourier features after normalization - First 5 values: 0 0.018483 0.0191483 0.015402 0.0175779 ...
+Regional features before normalization - Range: [2.44979e-09, 8.49682e-06]
+Regional features after normalization - First 5 values: 0.0601907 1 0 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.00671875
+  Mean difference: 2.30628e-06
+  StdDev of difference: 4.06806e-05
+Temporal features before normalization - Range: [2.30628e-06, 0.00671875]
+Temporal features after normalization - First 5 values: 1 0 0.00571348 ...
+Fourier features before normalization - Range: [0.0249942, 1]
+Fourier features after normalization - First 5 values: 0.00484765 0.00505378 0.0027353 0 0.00221285 ...
+Regional features before normalization - Range: [2.44751e-09, 8.49268e-06]
+Regional features after normalization - First 5 values: 0.0599426 1 0 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.00665365
+  Mean difference: 1.62526e-09
+  StdDev of difference: 2.65124e-08
+Temporal features before normalization - Range: [1.62526e-09, 0.00665365]
+Temporal features after normalization - First 5 values: 1 0 3.74038e-06 ...
+Fourier features before normalization - Range: [0.0250065, 1]
+Fourier features after normalization - First 5 values: 0.00479571 0.00504285 0.00270656 0 0.00220184 ...
+Regional features before normalization - Range: [2.44751e-09, 8.49268e-06]
+Regional features after normalization - First 5 values: 0.0599426 1 0 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.00669271
+  Mean difference: 9.47296e-14
+  StdDev of difference: 1.51895e-12
+Temporal features before normalization - Range: [9.47296e-14, 0.00669271]
+Temporal features after normalization - First 5 values: 1 0 2.12802e-10 ...
+Fourier features before normalization - Range: [0.0250065, 1]
+Fourier features after normalization - First 5 values: 0.00479571 0.00504285 0.00270656 0 0.00220073 ...
+Regional features before normalization - Range: [2.44751e-09, 8.49268e-06]
+Regional features after normalization - First 5 values: 0.0599426 1 0 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.00544271
+  Mean difference: 1.71909e-17
+  StdDev of difference: 3.62876e-16
+Temporal features before normalization - Range: [1.71909e-17, 0.00544271]
+Temporal features after normalization - First 5 values: 1 0 6.35134e-14 ...
+Fourier features before normalization - Range: [0.0250065, 1]
+Fourier features after normalization - First 5 values: 0.00479571 0.00504285 0.00270656 0 0.00220073 ...
+Regional features before normalization - Range: [2.44751e-09, 8.49268e-06]
+Regional features after normalization - First 5 values: 0.0599426 1 0 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.00890625
+  Mean difference: 3.20557e-17
+  StdDev of difference: 5.16194e-16
+Temporal features before normalization - Range: [3.20557e-17, 0.00890625]
+Temporal features after normalization - First 5 values: 1 0 5.43593e-14 ...
+Fourier features before normalization - Range: [0.0250065, 1]
+Fourier features after normalization - First 5 values: 0.00479571 0.00504285 0.00270656 0 0.00220073 ...
+Regional features before normalization - Range: [2.50679e-19, 8.49268e-06]
+Regional features after normalization - First 5 values: 0.0602135 1 0.000288191 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.00674479
+  Mean difference: 3.63972e-17
+  StdDev of difference: 7.23947e-16
+Temporal features before normalization - Range: [3.63972e-17, 0.00674479]
+Temporal features after normalization - First 5 values: 1 0 1.01938e-13 ...
+Fourier features before normalization - Range: [0.0250065, 1]
+Fourier features after normalization - First 5 values: 0.00479571 0.00504285 0.00270656 0 0.00220073 ...
+Regional features before normalization - Range: [6.47672e-19, 8.49268e-06]
+Regional features after normalization - First 5 values: 0.0602135 1 0.000288191 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.00770833
+  Mean difference: 1.3611e-16
+  StdDev of difference: 2.28853e-15
+Temporal features before normalization - Range: [1.3611e-16, 0.00770833]
+Temporal features after normalization - First 5 values: 1 0 2.79233e-13 ...
+Fourier features before normalization - Range: [0.0250065, 1]
+Fourier features after normalization - First 5 values: 0.00479571 0.00504285 0.00270656 0 0.00220073 ...
+Regional features before normalization - Range: [2.44751e-09, 8.49268e-06]
+Regional features after normalization - First 5 values: 0.0599426 1 0 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.00907552
+  Mean difference: 2.46413e-16
+  StdDev of difference: 3.72289e-15
+Temporal features before normalization - Range: [2.46413e-16, 0.00907552]
+Temporal features after normalization - First 5 values: 1 0 3.83061e-13 ...
+Fourier features before normalization - Range: [0.0250065, 1]
+Fourier features after normalization - First 5 values: 0.00479571 0.00504285 0.00270656 0 0.00220073 ...
+Regional features before normalization - Range: [2.00448e-16, 8.49276e-06]
+Regional features after normalization - First 5 values: 0.0602244 1 0.000288333 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.00846354
+  Mean difference: 4.49257e-11
+  StdDev of difference: 6.64449e-10
+Temporal features before normalization - Range: [4.49257e-11, 0.00846354]
+Temporal features after normalization - First 5 values: 1 0 7.31991e-08 ...
+Fourier features before normalization - Range: [0.0250088, 1]
+Fourier features after normalization - First 5 values: 0.00479353 0.00504067 0.00270437 0 0.00219742 ...
+Regional features before normalization - Range: [5.63827e-12, 7.35956e-06]
+Regional features after normalization - First 5 values: 0.579851 1 0.0110943 0 ...
+Temporal features - Change metrics:
+  Area of change: 0.013138
+  Mean difference: 3.0852e-06
+  StdDev of difference: 3.49958e-05
+Temporal features before normalization - Range: [3.0852e-06, 0.013138]
+Temporal features after normalization - First 5 values: 1 0 0.00242945 ...
+Fourier features before normalization - Range: [0.0901115, 1]
+Fourier features after normalization - First 5 values: 0.151867 0.12892 0.096409 0.0735132 0.0336122 ...
+Added features for test sequence bg:
+Feature vector size: 124
+Checking sequence path: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\nm-01"
+Looking for frames with prefix: 001-nm-01-000 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\nm-01\\000"
+Looking for frames with prefix: 001-nm-01-018 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\nm-01\\018"
+Looking for frames with prefix: 001-nm-01-036 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\nm-01\\036"
+Looking for frames with prefix: 001-nm-01-054 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\nm-01\\054"
+Looking for frames with prefix: 001-nm-01-072 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\nm-01\\072"
+Looking for frames with prefix: 001-nm-01-090 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\nm-01\\090"
+Looking for frames with prefix: 001-nm-01-108 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\nm-01\\108"
+Looking for frames with prefix: 001-nm-01-126 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\nm-01\\126"
+Looking for frames with prefix: 001-nm-01-144 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\nm-01\\144"
+Looking for frames with prefix: 001-nm-01-162 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\nm-01\\162"
+Looking for frames with prefix: 001-nm-01-180 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\nm-01\\180"
+Checking sequence path: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\bg-01"
+Looking for frames with prefix: 001-bg-01-000 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\bg-01\\000"
+Looking for frames with prefix: 001-bg-01-018 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\bg-01\\018"
+Looking for frames with prefix: 001-bg-01-036 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\bg-01\\036"
+Looking for frames with prefix: 001-bg-01-054 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\bg-01\\054"
+Looking for frames with prefix: 001-bg-01-072 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\bg-01\\072"
+Looking for frames with prefix: 001-bg-01-090 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\bg-01\\090"
+Looking for frames with prefix: 001-bg-01-108 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\bg-01\\108"
+Looking for frames with prefix: 001-bg-01-126 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\bg-01\\126"
+Looking for frames with prefix: 001-bg-01-144 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\bg-01\\144"
+Looking for frames with prefix: 001-bg-01-162 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\bg-01\\162"
+Looking for frames with prefix: 001-bg-01-180 in "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B\\test2\\bg-01\\180"
+
+Training classifier with available data...
+Training data:
+Number of people: 1
+Total sequences: 2
+[ INFO:0@9.563] global window_w32.cpp:2993 cv::impl::Win32BackendUI::createWindow OpenCV/UI: Creating Win32UI window: Training Data (0)
+[ INFO:0@9.591] global window_w32.cpp:2993 cv::impl::Win32BackendUI::createWindow OpenCV/UI: Creating Win32UI window: Classification Result (1)
+Sequence from test identified as: test (confidence: 1)
+Sequence from test identified as: test (confidence: 1)

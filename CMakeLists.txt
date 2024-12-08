@@ -25,3 +25,7 @@ target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
 
 # Define dataset path macro
 add_definitions(-DDATASET_PATH=\"${CMAKE_SOURCE_DIR}/data/CASIA_B\")
+
+set_target_properties(${EXE_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+)

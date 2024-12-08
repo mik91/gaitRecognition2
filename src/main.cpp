@@ -1,121 +1,255 @@
 #include "Loader.h"
-// #include "GaitAnalyzer.h"
-// #include "GaitClassifier.h"
+#include "GaitAnalyzer.h"
+#include "GaitVisualization.h"
 #include <iostream>
-// #include <opencv2/highgui.hpp>
+#include <chrono>
+#include <thread>
+#include <GaitClassifier.h>
+
+std::vector<double> accumulateSequenceFeatures(const std::vector<std::vector<double>>& frameFeatures) {
+    if (frameFeatures.empty()) {
+        return std::vector<double>();
+    }
+    
+    size_t featureSize = frameFeatures[0].size();
+    
+    // Verify all vectors have the same size
+    for (const auto& features : frameFeatures) {
+        if (features.size() != featureSize) {
+            std::cerr << "Warning: Inconsistent feature vector sizes. Expected: " 
+                     << featureSize << ", Got: " << features.size() << std::endl;
+            return std::vector<double>();
+        }
+    }
+    
+    std::vector<double> meanFeatures(featureSize, 0.0);
+    std::vector<double> varFeatures(featureSize, 0.0);
+    
+    // Safely calculate mean
+    for (const auto& frame : frameFeatures) {
+        for (size_t i = 0; i < featureSize; i++) {
+            meanFeatures[i] += frame[i];
+        }
+    }
+    
+    for (auto& val : meanFeatures) {
+        val /= frameFeatures.size();
+    }
+    
+    // Safely calculate variance
+    for (const auto& frame : frameFeatures) {
+        for (size_t i = 0; i < featureSize; i++) {
+            double diff = frame[i] - meanFeatures[i];
+            varFeatures[i] += diff * diff;
+        }
+    }
+    
+    for (auto& val : varFeatures) {
+        val = std::sqrt(val / frameFeatures.size());
+    }
+    
+    // Print debug information
+    std::cout << "Frame feature statistics:\n"
+              << "Number of frames: " << frameFeatures.size() << "\n"
+              << "Features per frame: " << featureSize << "\n"
+              << "Sample of mean values (first 5):\n";
+    
+    for (size_t i = 0; i < std::min(size_t(5), featureSize); i++) {
+        std::cout << "Feature " << i << ": mean=" << meanFeatures[i] 
+                 << ", stddev=" << varFeatures[i] << "\n";
+    }
+    
+    // Combine mean and variance features with bounds checking
+    std::vector<double> combinedFeatures;
+    combinedFeatures.reserve(featureSize * 2);
+    
+    for (size_t i = 0; i < featureSize; i++) {
+        // Only include features with meaningful variation
+        if (varFeatures[i] > 1e-10) {
+            combinedFeatures.push_back(meanFeatures[i]);
+            combinedFeatures.push_back(varFeatures[i]);
+        }
+    }
+    
+    std::cout << "Combined feature vector size: " << combinedFeatures.size() << "\n";
+    
+    return combinedFeatures;
+}
+
+void processSequence(const std::string& seq, const std::vector<cv::Mat>& frames, 
+                    gait::GaitAnalyzer& analyzer,
+                    std::map<std::string, std::vector<std::vector<double>>>& personFeatures,
+                    const std::string& personId) {
+    if (frames.empty()) {
+        std::cout << "Warning: No frames found for " << personId << " sequence " << seq << std::endl;
+        return;
+    }
+
+    std::cout << "Processing " << personId << " sequence " << seq 
+              << " (" << frames.size() << " frames)" << std::endl;
+    
+    std::vector<std::vector<double>> sequenceFrameFeatures;
+    const size_t EXPECTED_FEATURE_SIZE = 124;  // Fixed size based on our feature extraction
+    
+    // Process each frame
+    for (const auto& frame : frames) {
+        cv::Mat symmetryMap = analyzer.processFrame(frame);
+        std::vector<double> frameFeatures = analyzer.extractGaitFeatures(symmetryMap);
+        
+        // Ensure consistent feature size
+        if (frameFeatures.size() > 0) {
+            if (frameFeatures.size() > EXPECTED_FEATURE_SIZE) {
+                frameFeatures.resize(EXPECTED_FEATURE_SIZE);
+            } else if (frameFeatures.size() < EXPECTED_FEATURE_SIZE) {
+                frameFeatures.resize(EXPECTED_FEATURE_SIZE, 0.0);  // Pad with zeros
+            }
+            sequenceFrameFeatures.push_back(frameFeatures);
+        }
+    }
+    
+    if (!sequenceFrameFeatures.empty()) {
+        // Average features across frames
+        std::vector<double> avgFeatures(EXPECTED_FEATURE_SIZE, 0.0);
+        for (const auto& frameFeatures : sequenceFrameFeatures) {
+            for (size_t i = 0; i < EXPECTED_FEATURE_SIZE; i++) {
+                avgFeatures[i] += frameFeatures[i];
+            }
+        }
+        
+        for (auto& val : avgFeatures) {
+            val /= sequenceFrameFeatures.size();
+        }
+        
+        // Add features to person's data
+        personFeatures[personId].push_back(avgFeatures);
+        
+        std::cout << "Added features for " << personId << " sequence " << seq << ":\n"
+                 << "Feature vector size: " << avgFeatures.size() << std::endl;
+    }
+}
 
 int main() {
-    // try {
-    //     // Initialize loader with dataset path
-    //     #ifdef _WIN32
-    //         gait::Loader loader("C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B");
-    //     #else
-    //         gait::Loader loader("/u/kamarami/Documents/linux-gaitanalyzer/data/CASIA_B");
-    //     #endif
+    try {
+        // Initialize components
+        #ifdef _WIN32
+            gait::Loader loader("C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B");
+        #else
+            gait::Loader loader("/u/kamarami/Documents/linux-gaitanalyzer/data/CASIA_B");
+        #endif
+        gait::SymmetryParams params(27.0, 90.0, 0.1);
+        gait::GaitAnalyzer analyzer(params);
+        gait::GaitClassifier classifier;
 
-    //     // Initialize GaitAnalyzer with default parameters
-    //     gait::SymmetryParams params(27.0, 90.0, 0.1); // sigma, mu, threshold
-    //     gait::GaitAnalysisSystem system(params);
+        // Collect features per person
+        std::map<std::string, std::vector<std::vector<double>>> personFeatures;
+        std::vector<std::string> people = {"test", "test2"};
+        std::vector<std::string> conditions = {"nm", "bg"};
 
-    //     // Print available subjects
-    //     std::cout << "Available subjects:" << std::endl;
-    //     for (const auto& subject : loader.getSubjectIds()) {
-    //         std::cout << " - " << subject << std::endl;
-    //     }
+        // Create visualization windows
+        if (!gait::visualization::initializeWindows()) {
+            std::cerr << "Failed to initialize visualization windows" << std::endl;
+            return 1;
+        }
 
-    //     // Load training data
-    //     std::vector<std::vector<cv::Mat>> normalSequences;
-    //     std::vector<std::vector<cv::Mat>> abnormalSequences;
+        // Create additional windows for detailed features
+        cv::namedWindow("Detailed Features", cv::WINDOW_NORMAL);
+        cv::namedWindow("Regional Features", cv::WINDOW_NORMAL);
+        cv::namedWindow("Temporal Features", cv::WINDOW_NORMAL);
 
-    //     // Load normal gait sequences (e.g., from 'nm' condition)
-    //     try {
-    //         auto frames = loader.loadSequence("test", "nm", 1);
-    //         if (!frames.empty()) {
-    //             normalSequences.push_back(frames);
-    //         }
-    //     } catch (const std::exception& e) {
-    //         std::cerr << "Error loading normal sequence: " << e.what() << std::endl;
-    //     }
+        // Set initial sizes for better visibility
+        cv::resizeWindow("Detailed Features", 800, 400);
+        cv::resizeWindow("Regional Features", 400, 400);
+        cv::resizeWindow("Temporal Features", 600, 300);
 
-    //     // Load potentially abnormal gait sequences (e.g., from 'bg' condition)
-    //     try {
-    //         auto frames = loader.loadSequence("test", "bg", 1);
-    //         if (!frames.empty()) {
-    //             abnormalSequences.push_back(frames);
-    //         }
-    //     } catch (const std::exception& e) {
-    //         std::cerr << "Error loading abnormal sequence: " << e.what() << std::endl;
-    //     }
-
-    //     // Train the classifier if we have both types of sequences
-    //     if (!normalSequences.empty() && !abnormalSequences.empty()) {
-    //         std::cout << "Training classifier..." << std::endl;
-    //         if (system.trainClassifier(normalSequences, abnormalSequences)) {
-    //             std::cout << "Classifier trained successfully" << std::endl;
-    //         }
-    //     }
-
-    //     // Process and visualize a test sequence
-    //     try {
-    //         // Load a test sequence
-    //         auto testFrames = loader.loadSequence("test", "nm", 2);
-            
-    //         if (!testFrames.empty()) {
-    //             std::cout << "Processing test sequence..." << std::endl;
-                
-    //             // Process each frame
-    //             for (size_t i = 0; i < testFrames.size(); i++) {
-    //                 const auto& frame = testFrames[i];
+        // Process each person's sequences
+        for (const auto& person : people) {
+            for (const auto& condition : conditions) {
+                auto frames = loader.loadSequence(person, condition, 1);
+                if (!frames.empty()) {
+                    processSequence(condition, frames, analyzer, personFeatures, person);
                     
-    //                 // Create windows for visualization
-    //                 cv::namedWindow("Original Frame", cv::WINDOW_NORMAL);
-    //                 cv::namedWindow("Symmetry Map", cv::WINDOW_NORMAL);
-    //                 cv::namedWindow("Features", cv::WINDOW_NORMAL);
-                    
-    //                 // Process frame and get symmetry map
-    //                 cv::Mat symmetryMap = system.getAnalyzer().processFrame(frame);
-                    
-    //                 // Extract features
-    //                 std::vector<double> features = system.getAnalyzer().extractGaitFeatures(symmetryMap);
-                    
-    //                 // Visualize results
-    //                 cv::imshow("Original Frame", frame);
-    //                 cv::imshow("Symmetry Map", 
-    //                          gait::visualization::visualizeSymmetryMap(symmetryMap));
-    //                 cv::imshow("Features", 
-    //                          gait::visualization::visualizeGaitFeatures(features));
-                    
-    //                 // Display frame number
-    //                 std::cout << "Processing frame " << i + 1 << "/" 
-    //                          << testFrames.size() << std::endl;
-                    
-    //                 // Wait for key press (use ESC to exit)
-    //                 char key = cv::waitKey(30);
-    //                 if (key == 27) break; // ESC key
-    //             }
-                
-    //             // If classifier is trained, perform classification
-    //             if (!normalSequences.empty() && !abnormalSequences.empty()) {
-    //                 double confidence;
-    //                 auto gaitType = system.analyzeSequence(testFrames, confidence);
-                    
-    //                 std::cout << "Classification result: " 
-    //                          << (gaitType == gait::GaitClassifier::GaitType::NORMAL ? 
-    //                              "Normal" : "Abnormal")
-    //                          << " (confidence: " << confidence << ")" << std::endl;
-    //             }
-    //         }
-    //     } catch (const std::exception& e) {
-    //         std::cerr << "Error processing test sequence: " << e.what() << std::endl;
-    //     }
+                    // Show processing progress
+                    for (const auto& frame : frames) {
+                        // Process frame
+                        cv::Mat symmetryMap = analyzer.processFrame(frame);
+                        std::vector<double> frameFeatures = analyzer.extractGaitFeatures(symmetryMap);
+                        
+                        // Use the comprehensive display function
+                        bool continueProcessing = gait::visualization::displayResults(
+                            frame,                  // original frame
+                            symmetryMap,           // symmetry map
+                            frameFeatures         // extracted features
+                        );
+                        
+                        // Also show detailed feature visualizations
+                        cv::Mat featureVis = gait::visualization::visualizeGaitFeatures(frameFeatures);
+                        if (!featureVis.empty()) {
+                            cv::imshow("Detailed Features", featureVis);
+                        }
+                        
+                        cv::Mat regionalVis = gait::visualization::visualizeRegionalFeatures(
+                            std::vector<double>(frameFeatures.begin(), frameFeatures.begin() + 4)
+                        );
+                        if (!regionalVis.empty()) {
+                            cv::imshow("Regional Features", regionalVis);
+                        }
+                        
+                        cv::Mat temporalVis = gait::visualization::visualizeTemporalFeatures(
+                            std::vector<double>(frameFeatures.begin() + 4, frameFeatures.begin() + 7)
+                        );
+                        if (!temporalVis.empty()) {
+                            cv::imshow("Temporal Features", temporalVis);
+                        }
+                        
+                        // Handle window layout
+                        cv::moveWindow("Original Frame", 0, 0);
+                        cv::moveWindow("Symmetry Map", 650, 0);
+                        cv::moveWindow("Detailed Features", 1300, 0);
+                        cv::moveWindow("Regional Features", 0, 500);
+                        cv::moveWindow("Temporal Features", 650, 500);
+                        
+                        char key = cv::waitKey(30);
+                        if (key == 27) {  // ESC key
+                            return 0;
+                        }
+                    }
+                }
+            }
+        }
 
-    //     // Clean up
-    //     cv::destroyAllWindows();
-        
-    // } catch (const std::exception& e) {
-    //     std::cerr << "Error initializing loader: " << e.what() << std::endl;
-    //     return 1;
-    // }
-    
+        // Train classifier if we have data
+        bool hasData = false;
+        for (const auto& [person, sequences] : personFeatures) {
+            if (!sequences.empty()) {
+                hasData = true;
+                break;
+            }
+        }
+
+        if (hasData) {
+            std::cout << "\nTraining classifier with available data..." << std::endl;
+            if (classifier.analyzePatterns(personFeatures)) {
+                // Test each sequence
+                for (const auto& [person, sequences] : personFeatures) {
+                    for (const auto& sequence : sequences) {
+                        auto [predictedPerson, confidence] = classifier.identifyPerson(sequence);
+                        std::cout << "Sequence from " << person 
+                                << " identified as: " << predictedPerson 
+                                << " (confidence: " << confidence << ")\n";
+                    }
+                }
+            }
+        } else {
+            std::cout << "No valid data found for training" << std::endl;
+        }
+
+        cv::waitKey(0);
+        cv::destroyAllWindows();
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
+
     return 0;
 }

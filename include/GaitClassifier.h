@@ -1,97 +1,49 @@
 #pragma once
-
-#include <opencv2/opencv.hpp>
-#include <opencv2/ml.hpp>
 #include <vector>
 #include <string>
-#include "GaitAnalyzer.h"
+#include <map>
+#include <opencv2/opencv.hpp>
 
 namespace gait {
 
 class GaitClassifier {
 public:
-    // Enum to represent different gait types
-    enum class GaitType {
-        NORMAL,
-        ABNORMAL
+    // Structure to hold a person's gait sequence data
+    struct PersonData {
+        std::string id;
+        std::vector<std::vector<double>> features;
     };
 
-    // Constructor
     GaitClassifier();
-
-    // Training method
-    bool train(const std::vector<std::vector<double>>& features, 
-               const std::vector<GaitType>& labels);
-
-    // Classification methods
-    GaitType classify(const std::vector<double>& features);
-    double getConfidence(const std::vector<double>& features);
-
-    // Model persistence
-    bool saveModel(const std::string& filename);
-    bool loadModel(const std::string& filename);
+    
+    // Training and classification
+    bool analyzePatterns(const std::map<std::string, std::vector<std::vector<double>>>& personFeatures);
+    std::pair<std::string, double> identifyPerson(const std::vector<double>& testSequence);
+    
+    // Visualization methods
+    void visualizeTrainingData(const std::string& windowName = "Training Data");
+    void visualizeClassification(const std::vector<double>& testSequence, 
+                               const std::string& windowName = "Classification Result");
+    
+    // Getters
+    bool isModelTrained() const { return isModelTrained_; }
+    std::string getClusterStats() const;
 
 private:
-    cv::Ptr<cv::ml::SVM> svm_;
+    double computeDistance(const std::vector<double>& seq1, const std::vector<double>& seq2);
+    void computeClusterStatistics(const cv::Mat& features, const cv::Mat& labels);
+
+    struct ClusterStats {
+        int size = 0;
+        double avgDistance = 0.0;
+        double maxDistance = 0.0;
+        double variance = 0.0;
+    };
+
+    std::vector<std::vector<double>> trainingData_;
+    std::vector<std::string> trainingLabels_;
+    std::vector<ClusterStats> clusterStats_;
     bool isModelTrained_;
-};
-
-class GaitAnalysisSystem {
-public:
-    explicit GaitAnalysisSystem(const SymmetryParams& params);
-
-    // Add getter for the analyzer
-    GaitAnalyzer& getAnalyzer() { return analyzer_; }
-    const GaitAnalyzer& getAnalyzer() const { return analyzer_; }
-
-    GaitClassifier::GaitType analyzeSequence(
-        const std::vector<cv::Mat>& frames,
-        double& confidence);
-
-    bool trainClassifier(
-        const std::vector<std::vector<cv::Mat>>& normalSequences,
-        const std::vector<std::vector<cv::Mat>>& abnormalSequences);
-
-    bool saveClassifier(const std::string& filename);
-    bool loadClassifier(const std::string& filename);
-
-private:
-    GaitAnalyzer analyzer_;
-    GaitClassifier classifier_;
-
-    void processSequencesForTraining(
-        const std::vector<std::vector<cv::Mat>>& sequences,
-        GaitClassifier::GaitType label,
-        std::vector<std::vector<double>>& allFeatures,
-        std::vector<GaitClassifier::GaitType>& labels);
-};
-
-// Optional: Utility functions for cross-validation and evaluation
-struct EvaluationMetrics {
-    double accuracy;
-    double precision;
-    double recall;
-    double f1Score;
-    double falsePositiveRate;
-};
-
-class GaitEvaluator {
-public:
-    static EvaluationMetrics crossValidate(
-        GaitAnalysisSystem& system,
-        const std::vector<std::vector<cv::Mat>>& normalSequences,
-        const std::vector<std::vector<cv::Mat>>& abnormalSequences,
-        int folds = 5);
-
-    static EvaluationMetrics evaluate(
-        GaitAnalysisSystem& system,
-        const std::vector<std::vector<cv::Mat>>& testSequences,
-        const std::vector<GaitClassifier::GaitType>& trueLabels);
-
-private:
-    static std::vector<std::vector<size_t>> createFolds(
-        size_t datasetSize, 
-        int numFolds);
 };
 
 } // namespace gait
