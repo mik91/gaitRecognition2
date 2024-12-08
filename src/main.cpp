@@ -150,12 +150,6 @@ int main() {
         std::vector<std::string> people = {"test", "test2"};
         std::vector<std::string> conditions = {"nm", "bg"};
 
-        // Create visualization windows
-        if (!gait::visualization::initializeWindows()) {
-            std::cerr << "Failed to initialize visualization windows" << std::endl;
-            return 1;
-        }
-
         bool showVisualization = false;
         std::string input;
 
@@ -174,6 +168,12 @@ int main() {
         }
 
         if(showVisualization) {
+            // Create visualization windows
+            if (!gait::visualization::initializeWindows()) {
+                std::cerr << "Failed to initialize visualization windows" << std::endl;
+                return 1;
+            }
+
             // Create additional windows for detailed features
             cv::namedWindow("Detailed Features", cv::WINDOW_NORMAL);
             cv::namedWindow("Regional Features", cv::WINDOW_NORMAL);
@@ -255,11 +255,11 @@ int main() {
 
         if (hasData) {
             std::cout << "\nTraining classifier with available data..." << std::endl;
-            if (classifier.analyzePatterns(personFeatures)) {
+            if (classifier.analyzePatterns(personFeatures, showVisualization)) {
                 // Test each sequence
                 for (const auto& [person, sequences] : personFeatures) {
                     for (const auto& sequence : sequences) {
-                        auto [predictedPerson, confidence] = classifier.identifyPerson(sequence);
+                        auto [predictedPerson, confidence] = classifier.identifyPerson(sequence, showVisualization);
                         std::cout << "Sequence from " << person 
                                 << " identified as: " << predictedPerson 
                                 << " (confidence: " << confidence << ")\n";

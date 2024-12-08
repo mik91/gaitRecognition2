@@ -8,7 +8,8 @@ namespace gait {
 
 GaitClassifier::GaitClassifier() : isModelTrained_(false) {}
 
-bool GaitClassifier::analyzePatterns(const std::map<std::string, std::vector<std::vector<double>>>& personFeatures) {
+bool GaitClassifier::analyzePatterns(const std::map<std::string, std::vector<std::vector<double>>>& personFeatures, 
+                                     bool visualize) {
     if (personFeatures.empty()) return false;
 
     try {
@@ -34,8 +35,9 @@ bool GaitClassifier::analyzePatterns(const std::map<std::string, std::vector<std
         trainingLabels_ = labels;
         isModelTrained_ = true;
         
-        // Create visualization window
-        visualizeTrainingData();
+        if (visualize) {
+            visualizeTrainingData();
+        }
         
         return true;
     }
@@ -45,7 +47,8 @@ bool GaitClassifier::analyzePatterns(const std::map<std::string, std::vector<std
     }
 }
 
-std::pair<std::string, double> GaitClassifier::identifyPerson(const std::vector<double>& testSequence) {
+std::pair<std::string, double> GaitClassifier::identifyPerson(const std::vector<double>& testSequence, 
+                                                bool visualize) {
     if (!isModelTrained_ || trainingData_.empty()) {
         return {"unknown", 0.0};
     }
@@ -79,8 +82,9 @@ std::pair<std::string, double> GaitClassifier::identifyPerson(const std::vector<
         // Convert distance to similarity score
         double similarity = 1.0 / (1.0 + minDistance);
         
-        // Visualize result
-        visualizeClassification(testSequence);
+        if (visualize) {
+            visualizeClassification(testSequence);
+        }
         
         return {bestMatch, similarity};
     }

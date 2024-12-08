@@ -17,8 +17,10 @@ public:
     GaitClassifier();
     
     // Training and classification
-    bool analyzePatterns(const std::map<std::string, std::vector<std::vector<double>>>& personFeatures);
-    std::pair<std::string, double> identifyPerson(const std::vector<double>& testSequence);
+    bool analyzePatterns(const std::map<std::string, std::vector<std::vector<double>>>& personFeatures, 
+                         bool visualize = false);
+    std::pair<std::string, double> identifyPerson(const std::vector<double>& testSequence, 
+                                                  bool visualize = false);
     
     // Visualization methods
     void visualizeTrainingData(const std::string& windowName = "Training Data");
