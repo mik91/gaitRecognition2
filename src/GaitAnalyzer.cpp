@@ -312,19 +312,48 @@ std::vector<double> GaitAnalyzer::extractGaitFeatures(const cv::Mat& symmetryMap
     
     // Combine normalized features
     std::vector<double> combinedFeatures;
-    combinedFeatures.reserve(features.regional.size() + 
-                           features.temporal.size() + 
-                           features.fourier.size());
+    const size_t EXPECTED_FEATURE_SIZE = 124;  // Fixed size based on training data
     
+    // Reserve space for the expected size
+    combinedFeatures.reserve(EXPECTED_FEATURE_SIZE);
+    
+    // Add regional features (pad or truncate to expected size)
+    size_t regionalSize = std::min(features.regional.size(), size_t(4));
     combinedFeatures.insert(combinedFeatures.end(), 
                            features.regional.begin(), 
-                           features.regional.end());
+                           features.regional.begin() + regionalSize);
+    // Pad with zeros if needed
+    while (combinedFeatures.size() < 4) {
+        combinedFeatures.push_back(0.0);
+    }
+    
+    // Add temporal features (pad or truncate to expected size)
+    size_t temporalSize = std::min(features.temporal.size(), size_t(3));
     combinedFeatures.insert(combinedFeatures.end(), 
                            features.temporal.begin(), 
-                           features.temporal.end());
+                           features.temporal.begin() + temporalSize);
+    while (combinedFeatures.size() < 7) {
+        combinedFeatures.push_back(0.0);
+    }
+    
+    // Add Fourier features (pad or truncate to expected size)
+    size_t fourierSize = std::min(features.fourier.size(), size_t(117));
     combinedFeatures.insert(combinedFeatures.end(), 
                            features.fourier.begin(), 
-                           features.fourier.end());
+                           features.fourier.begin() + fourierSize);
+    // Pad remaining space with zeros
+    while (combinedFeatures.size() < EXPECTED_FEATURE_SIZE) {
+        combinedFeatures.push_back(0.0);
+    }
+    
+    std::cout << "Combined feature vector size: " << combinedFeatures.size() << "\n";
+    
+    // Validate final feature vector
+    if (combinedFeatures.size() != EXPECTED_FEATURE_SIZE) {
+        std::cerr << "Warning: Feature vector size mismatch. Expected: " 
+                  << EXPECTED_FEATURE_SIZE << ", Got: " 
+                  << combinedFeatures.size() << std::endl;
+    }
     
     return combinedFeatures;
 }

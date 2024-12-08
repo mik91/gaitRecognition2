@@ -51,6 +51,19 @@ std::pair<std::string, double> GaitClassifier::identifyPerson(const std::vector<
     }
 
     try {
+        // Validate feature vector size
+        if (testSequence.empty()) {
+            throw std::runtime_error("Empty test sequence");
+        }
+
+        // Check if sizes match
+        if (testSequence.size() != trainingData_[0].size()) {
+            std::cerr << "Feature vector size mismatch. Expected: " 
+                     << trainingData_[0].size() << ", Got: " 
+                     << testSequence.size() << std::endl;
+            return {"unknown", 0.0};
+        }
+
         // Find nearest neighbor
         double minDistance = std::numeric_limits<double>::max();
         std::string bestMatch;
@@ -72,7 +85,7 @@ std::pair<std::string, double> GaitClassifier::identifyPerson(const std::vector<
         return {bestMatch, similarity};
     }
     catch (const std::exception& e) {
-        std::cerr << "Error in identifyPerson: " << e.what() << "\n";
+        std::cerr << "Error in identifyPerson: " << e.what() << std::endl;
         return {"unknown", 0.0};
     }
 }

@@ -5,6 +5,7 @@
 #include <chrono>
 #include <thread>
 #include <GaitClassifier.h>
+#include <PersonIdentifier.h>
 
 std::vector<double> accumulateSequenceFeatures(const std::vector<std::vector<double>>& frameFeatures) {
     if (frameFeatures.empty()) {
@@ -241,6 +242,26 @@ int main() {
             }
         } else {
             std::cout << "No valid data found for training" << std::endl;
+        }
+        
+        if (classifier.isModelTrained()) {
+            gait::PersonIdentifier identifier(analyzer, classifier);
+            
+            std::string input;
+            while (true) {
+                std::cout << "\nEnter path to image for identification (or 'quit' to exit): ";
+                std::getline(std::cin, input);
+                
+                if (input == "quit") break;
+                
+                try {
+                    auto [predictedPerson, confidence] = identifier.identifyFromImage(input);
+                    std::cout << "Predicted person: " << predictedPerson << "\n"
+                            << "Confidence: " << confidence << "\n";
+                } catch (const std::exception& e) {
+                    std::cerr << "Error processing image: " << e.what() << "\n";
+                }
+            }
         }
 
         cv::waitKey(0);
