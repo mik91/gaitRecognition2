@@ -14,7 +14,8 @@ public:
     PersonIdentifier(GaitAnalyzer& analyzer, GaitClassifier& classifier);
 
     // Main identification method
-    std::pair<std::string, double> identifyFromImage(const std::string& imagePath);
+    std::pair<std::string, double> identifyFromImage(const std::string& imagePath, 
+                                    bool visualize = false);
 
 private:
     GaitAnalyzer& analyzer_;

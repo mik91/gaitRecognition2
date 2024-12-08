@@ -280,7 +280,7 @@ int main() {
                 if (input == "quit") break;
                 
                 try {
-                    auto [predictedPerson, confidence] = identifier.identifyFromImage(input);
+                    auto [predictedPerson, confidence] = identifier.identifyFromImage(input, showVisualization);
                     std::cout << "Predicted person: " << predictedPerson << "\n"
                             << "Confidence: " << confidence << "\n";
                 } catch (const std::exception& e) {

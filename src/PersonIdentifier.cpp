@@ -2,13 +2,15 @@
 #include "GaitVisualization.h"
 #include <stdexcept>
 #include <iostream>
+#include <PathConfig.h>
+#include <filesystem>
 
 namespace gait {
 
 PersonIdentifier::PersonIdentifier(GaitAnalyzer& analyzer, GaitClassifier& classifier)
     : analyzer_(analyzer), classifier_(classifier) {}
 
-std::pair<std::string, double> PersonIdentifier::identifyFromImage(const std::string& imagePath) {
+std::pair<std::string, double> PersonIdentifier::identifyFromImage(const std::string& imagePath, bool visualize) {
     try {
         // Load and validate image
         cv::Mat inputImage = cv::imread(imagePath);
@@ -53,13 +55,7 @@ std::pair<std::string, double> PersonIdentifier::identifyFromImage(const std::st
         try {
             auto [personId, confidence] = classifier_.identifyPerson(features);
             
-            // Visualize results only if identification was successful
-            cv::namedWindow("Input Image", cv::WINDOW_NORMAL);
-            cv::namedWindow("Symmetry Map", cv::WINDOW_NORMAL);
-            cv::imshow("Input Image", inputImage);
-            cv::imshow("Symmetry Map", visualization::visualizeSymmetryMap(symmetryMap));
-            
-            // Display prediction text
+            // Create result display regardless of visualization
             cv::Mat resultDisplay = inputImage.clone();
             std::string resultText = "Predicted: " + personId;
             std::string confidenceText = "Confidence: " + std::to_string(confidence);
@@ -67,14 +63,37 @@ std::pair<std::string, double> PersonIdentifier::identifyFromImage(const std::st
                         cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
             cv::putText(resultDisplay, confidenceText, cv::Point(20, 70), 
                         cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
-            cv::imshow("Result", resultDisplay);
+
+            if (visualize) {
+                // Create and show visualization windows
+                cv::namedWindow("Input Image", cv::WINDOW_NORMAL);
+                cv::namedWindow("Symmetry Map", cv::WINDOW_NORMAL);
+                cv::namedWindow("Result", cv::WINDOW_NORMAL);
+                
+                // Display the images
+                cv::imshow("Input Image", inputImage);
+                cv::imshow("Symmetry Map", visualization::visualizeSymmetryMap(symmetryMap));
+                cv::imshow("Result", resultDisplay);
+                
+                // Wait for a key press if visualizing
+                cv::waitKey(1);
+            }
             
-            // Save the result image
-            std::string outputPath = imagePath.substr(0, imagePath.find_last_of('.')) + "_result.png";
-            cv::imwrite(outputPath, resultDisplay);
+            // Save the result image using std::filesystem for cross-platform compatibility
+            auto& config = PathConfig::getInstance();
+            std::filesystem::path inputPath(imagePath);
+            std::filesystem::path outputDir(config.getPath("RESULTS_DIR"));
+            
+            // Create results directory if it doesn't exist
+            std::filesystem::create_directories(outputDir);
+            
+            // Construct output filename: original filename + "_result" + original extension
+            std::string stemName = inputPath.stem().string() + "_result";
+            std::filesystem::path outputPath = outputDir / (stemName + inputPath.extension().string());
+            
+            cv::imwrite(outputPath.string(), resultDisplay);
             std::cout << "Result saved as: " << outputPath << std::endl;
             
-            cv::waitKey(1); // Non-blocking wait
             return {personId, confidence};
         }
         catch (const std::runtime_error& e) {
