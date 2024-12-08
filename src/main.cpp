@@ -134,8 +134,14 @@ int main() {
     try {
         // Initialize components
         auto& config = gait::PathConfig::getInstance();
-        if (!config.loadConfig("../../config/paths.conf")) {
-            std::cerr << "Failed to load path configuration" << std::endl;
+
+        // Get the executable path
+        std::filesystem::path execPath = std::filesystem::canonical("/proc/self/exe");
+        std::filesystem::path projectRoot = execPath.parent_path().parent_path();
+        std::filesystem::path configPath = projectRoot / "config" / "paths.conf";
+
+        if (!config.loadConfig(configPath.string())) {
+            std::cerr << "Failed to load path configuration from: " << configPath << std::endl;
             return 1;
         }
 

@@ -59,10 +59,24 @@ std::string PathConfig::getPath(const std::string& key) const {
                 return it->second;
             }
         }
+
+        if (key == "RESULTS_DIR") {
+            auto it = paths_.find("RESULTS_DIR");
+            if (it != paths_.end()) {
+                return it->second;
+            }
+        }
     #else
         // Linux path mappings
         if (key == "DATASET_ROOT") {
             auto it = paths_.find("DATASET_LINUX_ROOT");
+            if (it != paths_.end()) {
+                return it->second;
+            }
+        }
+
+        if (key == "RESULTS_DIR") {
+            auto it = paths_.find("RESULTS_LINUX_DIR");
             if (it != paths_.end()) {
                 return it->second;
             }
