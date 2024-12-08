@@ -34,7 +34,7 @@ std::vector<cv::Mat> Loader::loadSequence(const std::string& subjectId,
                                         int sequenceNumber) {
     std::vector<cv::Mat> frames;
     std::string sequencePath = condition + "-" + formatNumber(sequenceNumber, 2);
-    fs::path fullPath = fs::path(datasetPath_) / subjectId / sequencePath;
+    std::filesystem::path fullPath = std::filesystem::path(datasetPath_) / subjectId / sequencePath;
     
     std::cout << "Checking sequence path: " << fullPath << std::endl;
     

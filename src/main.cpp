@@ -7,6 +7,7 @@
 #include <GaitClassifier.h>
 #include <PersonIdentifier.h>
 #include <PathConfig.h>
+#include <ExecutablePath.h>
 
 std::vector<double> accumulateSequenceFeatures(const std::vector<std::vector<double>>& frameFeatures) {
     if (frameFeatures.empty()) {
@@ -135,10 +136,9 @@ int main() {
         // Initialize components
         auto& config = gait::PathConfig::getInstance();
 
-        // Get the executable path
-        std::filesystem::path execPath = std::filesystem::canonical("/proc/self/exe");
-        std::filesystem::path projectRoot = execPath.parent_path().parent_path();
-        std::filesystem::path configPath = projectRoot / "config" / "paths.conf";
+        // Get config path using ExecutablePath
+        std::filesystem::path configPath = gait::ExecutablePath::getConfigPath();
+        std::cout << "Found config path: " << configPath << std::endl;
 
         if (!config.loadConfig(configPath.string())) {
             std::cerr << "Failed to load path configuration from: " << configPath << std::endl;
