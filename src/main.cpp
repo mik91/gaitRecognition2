@@ -6,6 +6,7 @@
 #include <thread>
 #include <GaitClassifier.h>
 #include <PersonIdentifier.h>
+#include <PathConfig.h>
 
 std::vector<double> accumulateSequenceFeatures(const std::vector<std::vector<double>>& frameFeatures) {
     if (frameFeatures.empty()) {
@@ -132,11 +133,14 @@ void processSequence(const std::string& seq, const std::vector<cv::Mat>& frames,
 int main() {
     try {
         // Initialize components
-        #ifdef _WIN32
-            gait::Loader loader("C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\data\\CASIA_B");
-        #else
-            gait::Loader loader("/u/kamarami/Documents/linux-gaitanalyzer/data/CASIA_B");
-        #endif
+        auto& config = gait::PathConfig::getInstance();
+        if (!config.loadConfig("../../config/paths.conf")) {
+            std::cerr << "Failed to load path configuration" << std::endl;
+            return 1;
+        }
+
+        gait::Loader loader(config.getPath("DATASET_ROOT"));
+        
         gait::SymmetryParams params(27.0, 90.0, 0.1);
         gait::GaitAnalyzer analyzer(params);
         gait::GaitClassifier classifier;

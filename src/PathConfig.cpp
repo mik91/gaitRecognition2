@@ -1,45 +1,25 @@
 #include "PathConfig.h"
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 
 namespace gait {
-
-std::string PathConfig::getPath(const std::string& key) const {
-    #ifdef _WIN32
-        // Windows path mappings
-        if (key == "DATASET_ROOT") {
-            auto it = paths_.find("DATASET_ROOT");
-            if (it != paths_.end()) {
-                return it->second;
-            }
-        }
-    #else
-        // Linux path mappings
-        if (key == "DATASET_ROOT") {
-            auto it = paths_.find("DATASET_LINUX_ROOT");
-            if (it != paths_.end()) {
-                return it->second;
-            }
-        }
-    #endif
-
-    // If no special mapping or not found, try direct lookup
-    auto it = paths_.find(key);
-    if (it != paths_.end()) {
-        return it->second;
-    }
-
-    std::cerr << "Path not found for key: " << key << std::endl;
-    return "";
-}
 
 bool PathConfig::loadConfig(const std::string& configFile) {
     configFile_ = configFile;
     paths_.clear();
     
+    // Get and print current working directory for debugging
+    std::cout << "Current working directory: " 
+              << std::filesystem::current_path() << std::endl;
+    
+    std::cout << "Attempting to load config file: " << configFile << std::endl;
+    
     std::ifstream file(configFile);
     if (!file.is_open()) {
         std::cerr << "Could not open config file: " << configFile << std::endl;
+        std::cerr << "Full path attempted: " 
+                  << std::filesystem::absolute(configFile) << std::endl;
         return false;
     }
 
@@ -68,6 +48,35 @@ bool PathConfig::loadConfig(const std::string& configFile) {
     }
 
     return true;
+}
+
+std::string PathConfig::getPath(const std::string& key) const {
+    #ifdef _WIN32
+        // Windows path mappings
+        if (key == "DATASET_ROOT") {
+            auto it = paths_.find("DATASET_ROOT");
+            if (it != paths_.end()) {
+                return it->second;
+            }
+        }
+    #else
+        // Linux path mappings
+        if (key == "DATASET_ROOT") {
+            auto it = paths_.find("DATASET_LINUX_ROOT");
+            if (it != paths_.end()) {
+                return it->second;
+            }
+        }
+    #endif
+
+    // If no special mapping or not found, try direct lookup
+    auto it = paths_.find(key);
+    if (it != paths_.end()) {
+        return it->second;
+    }
+
+    std::cerr << "Path not found for key: " << key << std::endl;
+    return "";
 }
 
 void PathConfig::setPath(const std::string& key, const std::string& path) {

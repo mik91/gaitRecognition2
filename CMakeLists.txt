@@ -9,10 +9,12 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 
 # Include additional header files from the include directory
 include_directories(include)
+include_directories(config)
 
 # Add source files
 add_executable(
     ${PROJECT_NAME}
+    src/PathConfig.cpp
     src/PersonIdentifier.cpp
     src/GaitVisualization.cpp
     src/GaitAnalyzer.cpp
