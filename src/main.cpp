@@ -156,15 +156,35 @@ int main() {
             return 1;
         }
 
-        // Create additional windows for detailed features
-        cv::namedWindow("Detailed Features", cv::WINDOW_NORMAL);
-        cv::namedWindow("Regional Features", cv::WINDOW_NORMAL);
-        cv::namedWindow("Temporal Features", cv::WINDOW_NORMAL);
+        bool showVisualization = false;
+        std::string input;
 
-        // Set initial sizes for better visibility
-        cv::resizeWindow("Detailed Features", 800, 400);
-        cv::resizeWindow("Regional Features", 400, 400);
-        cv::resizeWindow("Temporal Features", 600, 300);
+        while (true) {
+            std::cout << "Show visualization? (y/n): ";
+            std::getline(std::cin, input);
+
+            if (input == "y") {
+                showVisualization = true;
+                break;
+            } else if (input == "n") {
+                showVisualization = false;
+                break;
+            }
+
+        }
+
+        if(showVisualization) {
+            // Create additional windows for detailed features
+            cv::namedWindow("Detailed Features", cv::WINDOW_NORMAL);
+            cv::namedWindow("Regional Features", cv::WINDOW_NORMAL);
+            cv::namedWindow("Temporal Features", cv::WINDOW_NORMAL);
+
+            // Set initial sizes for better visibility
+            cv::resizeWindow("Detailed Features", 800, 400);
+            cv::resizeWindow("Regional Features", 400, 400);
+            cv::resizeWindow("Temporal Features", 600, 300);
+        }
+
 
         // Process each person's sequences
         for (const auto& person : people) {
@@ -174,48 +194,50 @@ int main() {
                     processSequence(condition, frames, analyzer, personFeatures, person);
                     
                     // Show processing progress
-                    for (const auto& frame : frames) {
-                        // Process frame
-                        cv::Mat symmetryMap = analyzer.processFrame(frame);
-                        std::vector<double> frameFeatures = analyzer.extractGaitFeatures(symmetryMap);
-                        
-                        // Use the comprehensive display function
-                        bool continueProcessing = gait::visualization::displayResults(
-                            frame,                  // original frame
-                            symmetryMap,           // symmetry map
-                            frameFeatures         // extracted features
-                        );
-                        
-                        // Also show detailed feature visualizations
-                        cv::Mat featureVis = gait::visualization::visualizeGaitFeatures(frameFeatures);
-                        if (!featureVis.empty()) {
-                            cv::imshow("Detailed Features", featureVis);
-                        }
-                        
-                        cv::Mat regionalVis = gait::visualization::visualizeRegionalFeatures(
-                            std::vector<double>(frameFeatures.begin(), frameFeatures.begin() + 4)
-                        );
-                        if (!regionalVis.empty()) {
-                            cv::imshow("Regional Features", regionalVis);
-                        }
-                        
-                        cv::Mat temporalVis = gait::visualization::visualizeTemporalFeatures(
-                            std::vector<double>(frameFeatures.begin() + 4, frameFeatures.begin() + 7)
-                        );
-                        if (!temporalVis.empty()) {
-                            cv::imshow("Temporal Features", temporalVis);
-                        }
-                        
-                        // Handle window layout
-                        cv::moveWindow("Original Frame", 0, 0);
-                        cv::moveWindow("Symmetry Map", 650, 0);
-                        cv::moveWindow("Detailed Features", 1300, 0);
-                        cv::moveWindow("Regional Features", 0, 500);
-                        cv::moveWindow("Temporal Features", 650, 500);
-                        
-                        char key = cv::waitKey(30);
-                        if (key == 27) {  // ESC key
-                            return 0;
+                    if (showVisualization) {
+                        for (const auto& frame : frames) {
+                            // Process frame
+                            cv::Mat symmetryMap = analyzer.processFrame(frame);
+                            std::vector<double> frameFeatures = analyzer.extractGaitFeatures(symmetryMap);
+                            
+                            // Use the comprehensive display function
+                            bool continueProcessing = gait::visualization::displayResults(
+                                frame,                  // original frame
+                                symmetryMap,           // symmetry map
+                                frameFeatures         // extracted features
+                            );
+                            
+                            // Also show detailed feature visualizations
+                            cv::Mat featureVis = gait::visualization::visualizeGaitFeatures(frameFeatures);
+                            if (!featureVis.empty()) {
+                                cv::imshow("Detailed Features", featureVis);
+                            }
+                            
+                            cv::Mat regionalVis = gait::visualization::visualizeRegionalFeatures(
+                                std::vector<double>(frameFeatures.begin(), frameFeatures.begin() + 4)
+                            );
+                            if (!regionalVis.empty()) {
+                                cv::imshow("Regional Features", regionalVis);
+                            }
+                            
+                            cv::Mat temporalVis = gait::visualization::visualizeTemporalFeatures(
+                                std::vector<double>(frameFeatures.begin() + 4, frameFeatures.begin() + 7)
+                            );
+                            if (!temporalVis.empty()) {
+                                cv::imshow("Temporal Features", temporalVis);
+                            }
+                            
+                            // Handle window layout
+                            cv::moveWindow("Original Frame", 0, 0);
+                            cv::moveWindow("Symmetry Map", 650, 0);
+                            cv::moveWindow("Detailed Features", 1300, 0);
+                            cv::moveWindow("Regional Features", 0, 500);
+                            cv::moveWindow("Temporal Features", 650, 500);
+                            
+                            char key = cv::waitKey(30);
+                            if (key == 27) {  // ESC key
+                                return 0;
+                            }
                         }
                     }
                 }
@@ -250,8 +272,7 @@ int main() {
         
         if (classifier.isModelTrained()) {
             gait::PersonIdentifier identifier(analyzer, classifier);
-            
-            std::string input;
+        
             while (true) {
                 std::cout << "\nEnter path to image for identification (or 'quit' to exit): ";
                 std::getline(std::cin, input);
