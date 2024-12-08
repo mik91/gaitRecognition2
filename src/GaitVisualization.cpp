@@ -295,7 +295,7 @@ void plotFeatureDistribution(
     cv::waitKey(1);
 }
 
-cv::Mat visualization::visualizeRegionalFeatures(const std::vector<double>& regionalFeatures) {
+cv::Mat visualizeRegionalFeatures(const std::vector<double>& regionalFeatures) {
     const int height = 400;
     const int width = 400;
     cv::Mat visualization = cv::Mat::zeros(height, width, CV_8UC3);
@@ -362,7 +362,7 @@ cv::Mat visualization::visualizeRegionalFeatures(const std::vector<double>& regi
     return visualization;
 }
 
-cv::Mat visualization::visualizeTemporalFeatures(const std::vector<double>& temporalFeatures) {
+cv::Mat visualizeTemporalFeatures(const std::vector<double>& temporalFeatures) {
     const int height = 300;
     const int width = 600;
     cv::Mat visualization = cv::Mat::zeros(height, width, CV_8UC3);
