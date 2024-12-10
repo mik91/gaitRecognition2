@@ -24,7 +24,6 @@ void Loader::scanDataset() {
             return;
         }
 
-        // Scan for subjects (test and test2 directories)
         for (const auto& entry : fs::directory_iterator(datasetPath_)) {
             if (fs::is_directory(entry)) {
                 std::string subjectId = entry.path().filename().string();
@@ -49,7 +48,7 @@ std::vector<cv::Mat> Loader::loadSequence(const std::string& subjectId,
     std::string sequencePath = condition + "-" + seqNumberStr;
     fs::path fullPath = fs::path(datasetPath_) / subjectId / sequencePath;
     
-    std::cout << "Loading sequence from path: " << fullPath << std::endl;
+    // std::cout << "Loading sequence from path: " << fullPath << std::endl;
     
     if (!fs::exists(fullPath)) {
         std::cout << "Warning: Sequence path does not exist: " << fullPath << std::endl;
@@ -75,8 +74,8 @@ std::vector<cv::Mat> Loader::loadSequence(const std::string& subjectId,
         std::string framePrefix = prefix + "-" + condition + "-" + 
                                 seqNumberStr + "-" + formatNumber(frameNum, 3);
                            
-        std::cout << "Looking for frames with prefix: " << framePrefix 
-                 << " in " << frameDir << std::endl;
+        // std::cout << "Looking for frames with prefix: " << framePrefix 
+        //          << " in " << frameDir << std::endl;
         
         bool frameFound = false;
         if (fs::is_directory(frameDir)) {
@@ -84,7 +83,7 @@ std::vector<cv::Mat> Loader::loadSequence(const std::string& subjectId,
                 if (entry.path().extension() == ".png") {
                     std::string filename = entry.path().filename().string();
                     if (filename.find(framePrefix) == 0) {
-                        std::cout << "Loading frame: " << entry.path() << std::endl;
+                        // std::cout << "Loading frame: " << entry.path() << std::endl;
                         cv::Mat frame = cv::imread(entry.path().string());
                         if (!frame.empty()) {
                             frames.push_back(frame);
@@ -115,7 +114,7 @@ std::string Loader::getSubjectPrefix(const std::string& subjectId,
     fs::path firstFrameDir = fs::path(datasetPath_) / subjectId / 
                             (condition + "-" + seqStr) / "000";
     
-    std::cout << "Looking for subject prefix in: " << firstFrameDir << std::endl;
+    // std::cout << "Looking for subject prefix in: " << firstFrameDir << std::endl;
     
     if (!fs::exists(firstFrameDir) || !fs::is_directory(firstFrameDir)) {
         std::cout << "First frame directory does not exist: " << firstFrameDir << std::endl;

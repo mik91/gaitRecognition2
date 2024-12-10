@@ -1,0 +1,143 @@
+Training classifier with available data...
+Training data:
+Number of people: 2
+Total sequences: 4
+[ INFO:0@13.412] global window_w32.cpp:2993 cv::impl::Win32BackendUI::createWindow OpenCV/UI: Creating Win32UI window: Training Data (0)
+
+Nearest neighbors for test sequence:
+Neighbor 1: test (distance: 0)
+Neighbor 2: test (distance: 0.0107511)
+Neighbor 3: test2 (distance: 0.0107511)
+Neighbor 4: test2 (distance: 0.0107511)
+
+Voting results:
+test: 2 votes, confidence: 166682
+test2: 2 votes, confidence: 31.0016
+
+Final decision: test with confidence: 0.999814
+
+[ INFO:0@13.441] global window_w32.cpp:2993 cv::impl::Win32BackendUI::createWindow OpenCV/UI: Creating Win32UI window: Classification Result (1)
+Sequence from test identified as: test (confidence: 0.999814)
+
+Nearest neighbors for test sequence:
+Neighbor 1: test (distance: 0)
+Neighbor 2: test2 (distance: 5.95529e-18)
+Neighbor 3: test2 (distance: 6.92609e-18)
+Neighbor 4: test (distance: 0.0107511)
+
+Voting results:
+test: 2 votes, confidence: 166682
+test2: 2 votes, confidence: 333333
+
+Final decision: test2 with confidence: 0.666646
+
+Sequence from test identified as: test2 (confidence: 0.666646)
+
+Nearest neighbors for test sequence:
+Neighbor 1: test2 (distance: 0)
+Neighbor 2: test2 (distance: 1.04044e-18)
+Neighbor 3: test (distance: 6.92609e-18)
+Neighbor 4: test (distance: 0.0107511)
+
+Voting results:
+test: 2 votes, confidence: 166682
+test2: 2 votes, confidence: 333333
+
+Final decision: test2 with confidence: 0.666646
+
+Sequence from test2 identified as: test2 (confidence: 0.666646)
+
+Nearest neighbors for test sequence:
+Neighbor 1: test2 (distance: 0)
+Neighbor 2: test2 (distance: 1.04044e-18)
+Neighbor 3: test (distance: 5.95529e-18)
+Neighbor 4: test (distance: 0.0107511)
+
+Voting results:
+test: 2 votes, confidence: 166682
+
+Final decision: test2 with confidence: 0.666646
+
+Sequence from test2 identified as: test2 (confidence: 0.666646)
+
+Nearest neighbors for test sequence:
+Neighbor 1: test2 (distance: 0)
+Neighbor 2: test2 (distance: 1.04044e-18)
+Neighbor 3: test (distance: 5.95529e-18)
+Neighbor 4: test (distance: 0.0107511)
+
+Voting results:
+
+Final decision: test2 with confidence: 0.666646
+
+Sequence from test2 identified as: test2 (confidence: 0.666646)
+
+Nearest neighbors for test sequence:
+Neighbor 1: test2 (distance: 0)
+Neighbor 2: test2 (distance: 1.04044e-18)
+Neighbor 3: test (distance: 5.95529e-18)
+Neighbor 4: test (distance: 0.0107511)
+
+Final decision: test2 with confidence: 0.666646
+
+Sequence from test2 identified as: test2 (confidence: 0.666646)
+
+Nearest neighbors for test sequence:
+Neighbor 1: test2 (distance: 0)
+
+Final decision: test2 with confidence: 0.666646
+
+Sequence from test2 identified as: test2 (confidence: 0.666646)
+
+Nearest neighbors for test sequence:
+Neighbor 1: test2 (distance: 0)
+Neighbor 2: test2 (distance: 1.04044e-18)
+Neighbor 3: test (distance: 5.95529e-18)
+Neighbor 4: test (distance: 0.0107511)
+
+Voting results:
+
+Final decision: test2 with confidence: 0.666646
+
+Sequence from test2 identified as: test2 (confidence: 0.666646)
+
+Nearest neighbors for test sequence:
+Neighbor 1: test2 (distance: 0)
+Neighbor 2: test2 (distance: 1.04044e-18)
+
+Final decision: test2 with confidence: 0.666646
+
+Sequence from test2 identified as: test2 (confidence: 0.666646)
+
+Nearest neighbors for test sequence:
+Neighbor 1: test2 (distance: 0)
+
+Final decision: test2 with confidence: 0.666646
+
+Sequence from test2 identified as: test2 (confidence: 0.666646)
+
+
+Final decision: test2 with confidence: 0.666646
+
+
+Final decision: test2 with confidence: 0.666646
+
+
+Final decision: test2 with confidence: 0.666646
+Final decision: test2 with confidence: 0.666646
+
+Sequence from test2 identified as: test2 (confidence: 0.666646)
+
+Nearest neighbors for test sequence:
+Neighbor 1: test2 (distance: 0)
+Neighbor 2: test2 (distance: 1.04044e-18)
+Neighbor 3: test (distance: 5.95529e-18)
+Neighbor 4: test (distance: 0.0107511)
+
+Voting results:
+test: 2 votes, confidence: 166682
+test2: 2 votes, confidence: 333333
+
+Final decision: test2 with confidence: 0.666646
+
+Sequence from test2 identified as: test2 (confidence: 0.666646)

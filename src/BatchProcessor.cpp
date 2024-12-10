@@ -151,16 +151,20 @@ void BatchProcessor::summarizeResults(const std::vector<ProcessingResult>& resul
     // Calculate statistics
     double totalConfidence = 0.0;
     double totalTime = 0.0;
-    std::map<std::string, int> personCounts;
+    std::map<std::string, std::pair<int, double>> personStats;  // Count and total confidence
     double minConfidence = 1.0;
     double maxConfidence = 0.0;
     double minTime = std::numeric_limits<double>::max();
     double maxTime = 0.0;
 
+    // Collect stats for each prediction
     for (const auto& result : results) {
         totalConfidence += result.confidence;
         totalTime += result.processingTime;
-        personCounts[result.predictedPerson]++;
+        
+        auto& stats = personStats[result.predictedPerson];
+        stats.first++;  // Increment count
+        stats.second += result.confidence;  // Add confidence
         
         minConfidence = std::min(minConfidence, result.confidence);
         maxConfidence = std::max(maxConfidence, result.confidence);
@@ -168,22 +172,30 @@ void BatchProcessor::summarizeResults(const std::vector<ProcessingResult>& resul
         maxTime = std::max(maxTime, result.processingTime);
     }
 
+    // Find most likely match
+    std::string bestMatch;
+    double bestAverageConfidence = 0.0;
+    int bestCount = 0;
+
+    for (const auto& [person, stats] : personStats) {
+        double avgConfidence = stats.second / stats.first;
+        if (avgConfidence > bestAverageConfidence) {
+            bestAverageConfidence = avgConfidence;
+            bestMatch = person;
+            bestCount = stats.first;
+        }
+    }
+
     // Print summary
     std::cout << "\nBatch Processing Summary\n"
               << "========================\n"
               << "Total images processed: " << results.size() << "\n"
+              << "Most likely match: " << bestMatch << " (" 
+              << std::fixed << std::setprecision(1) 
+              << (bestCount * 100.0 / results.size()) << "% of predictions, "
+              << std::setprecision(4) << bestAverageConfidence << " avg confidence)\n"
               << "Average confidence: " << (totalConfidence / results.size()) << "\n"
-              << "Confidence range: " << minConfidence << " - " << maxConfidence << "\n"
-              << "Average processing time: " << (totalTime / results.size()) << " ms\n"
-              << "Processing time range: " << minTime << " - " << maxTime << " ms\n\n"
-              << "Predictions breakdown:\n";
-
-    for (const auto& [person, count] : personCounts) {
-        double percentage = (100.0 * count) / results.size();
-        std::cout << person << ": " << count << " images (" 
-                  << std::fixed << std::setprecision(1) << percentage << "%)\n";
-    }
-    std::cout << std::endl;
+              << "Average processing time: " << (totalTime / results.size()) << " ms\n";
 }
 
 void BatchProcessor::writeSummaryReport(

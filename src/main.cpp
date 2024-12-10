@@ -74,7 +74,7 @@ std::vector<double> accumulateSequenceFeatures(const std::vector<std::vector<dou
         }
     }
     
-    std::cout << "Combined feature vector size: " << combinedFeatures.size() << "\n";
+    // std::cout << "Combined feature vector size: " << combinedFeatures.size() << "\n";
     
     return combinedFeatures;
 }
@@ -144,7 +144,7 @@ int main() {
 
         gait::Loader loader(config.getPath("DATASET_ROOT"));
         
-        gait::SymmetryParams params(35.0, 100.0, 0.08);  // Adjusted parameters
+        gait::SymmetryParams params(35.0, 100.0, 0.08);
         gait::GaitAnalyzer analyzer(params);
         gait::GaitClassifier classifier;
 
@@ -232,7 +232,7 @@ int main() {
                             
                             // Handle window layout
                             cv::moveWindow("Original Frame", 0, 0);
-                            cv::moveWindow("Symmetry Map", 650, 0);
+                            cv::moveWindow("Symmetry Map", 900, 0);
                             cv::moveWindow("Detailed Features", 1300, 0);
                             cv::moveWindow("Regional Features", 0, 500);
                             cv::moveWindow("Temporal Features", 650, 500);
@@ -275,22 +275,6 @@ int main() {
         
         if (classifier.isModelTrained()) {
             gait::PersonIdentifier identifier(analyzer, classifier);
-        
-            // while (true) {
-            //     std::cout << "\nEnter path to image for identification (or 'quit' to exit): ";
-            //     std::getline(std::cin, input);
-                
-            //     if (input == "quit") break;
-                
-            //     try {
-            //         auto [predictedPerson, confidence] = identifier.identifyFromImage(input, showVisualization);
-            //         std::cout << "Predicted person: " << predictedPerson << "\n"
-            //                 << "Confidence: " << confidence << "\n";
-            //     } catch (const std::exception& e) {
-            //         std::cerr << "Error processing image: " << e.what() << "\n";
-            //     }
-            // }
-
             gait::BatchProcessor batchProcessor(analyzer, classifier);
 
             while (true) {

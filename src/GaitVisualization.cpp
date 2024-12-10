@@ -10,13 +10,21 @@ bool initializeWindows() {
     try {
         // Create windows with specific properties
         cv::namedWindow("Original Frame", cv::WINDOW_NORMAL | cv::WINDOW_KEEPRATIO);
+        cv::namedWindow("Sobel Edges", cv::WINDOW_NORMAL | cv::WINDOW_KEEPRATIO);
         cv::namedWindow("Symmetry Map", cv::WINDOW_NORMAL | cv::WINDOW_KEEPRATIO);
         cv::namedWindow("Features", cv::WINDOW_NORMAL | cv::WINDOW_KEEPRATIO);
 
         // Set initial window sizes
         cv::resizeWindow("Original Frame", 640, 480);
+        cv::resizeWindow("Sobel Edges", 640, 480);
         cv::resizeWindow("Symmetry Map", 640, 480);
         cv::resizeWindow("Features", 800, 400);
+
+        // Arrange windows
+        cv::moveWindow("Original Frame", 0, 0);
+        cv::moveWindow("Sobel Edges", 650, 0);
+        cv::moveWindow("Symmetry Map", 1300, 0);
+        cv::moveWindow("Features", 650, 500);
 
         return true;
     } catch (const cv::Exception& e) {
@@ -36,7 +44,6 @@ void cleanupWindows() {
 bool displayResults(const cv::Mat& originalFrame, const cv::Mat& symmetryMap, 
                    const std::vector<double>& features) {
     try {
-        // Check if input images are valid
         if (originalFrame.empty() || symmetryMap.empty()) {
             std::cerr << "Invalid input images for visualization" << std::endl;
             return false;
@@ -45,16 +52,23 @@ bool displayResults(const cv::Mat& originalFrame, const cv::Mat& symmetryMap,
         // Display original frame
         cv::imshow("Original Frame", originalFrame);
 
+        // Compute and display Sobel edges
+        cv::Mat gray, sobelX, sobelY, sobelCombined;
+        cv::cvtColor(originalFrame, gray, cv::COLOR_BGR2GRAY);
+        cv::Sobel(gray, sobelX, CV_16S, 1, 0);
+        cv::Sobel(gray, sobelY, CV_16S, 0, 1);
+        
+        // Convert to absolute values and combine
+        cv::convertScaleAbs(sobelX, sobelX);
+        cv::convertScaleAbs(sobelY, sobelY);
+        cv::addWeighted(sobelX, 0.5, sobelY, 0.5, 0, sobelCombined);
+        
+        cv::imshow("Sobel Edges", sobelCombined);
+
         // Visualize and display symmetry map
         cv::Mat symmetryVis = visualizeSymmetryMap(symmetryMap);
         if (!symmetryVis.empty()) {
             cv::imshow("Symmetry Map", symmetryVis);
-        }
-
-        // Visualize and display features
-        cv::Mat featureVis = visualizeGaitFeatures(features);
-        if (!featureVis.empty()) {
-            cv::imshow("Features", featureVis);
         }
 
         // Process UI events and wait for key
@@ -97,17 +111,19 @@ cv::Mat visualizeSymmetryMap(const cv::Mat& symmetryMap) {
         cv::Mat visualMap;
         normalized.convertTo(visualMap, CV_8UC1, 255);
         
-        // Apply color map
-        cv::applyColorMap(visualMap, colored, cv::COLORMAP_JET);
+        // Create black background image
+        colored = cv::Mat::zeros(visualMap.size(), CV_8UC3);
         
-        // Draw contours (optional - comment out if too slow)
-        std::vector<std::vector<cv::Point>> contours;
-        for (float level = 0.2f; level < 1.0f; level += 0.2f) {
-            cv::Mat binary;
-            cv::threshold(normalized, binary, level, 1.0, cv::THRESH_BINARY);
-            binary.convertTo(binary, CV_8UC1, 255);
-            cv::findContours(binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-            cv::drawContours(colored, contours, -1, cv::Scalar(255,255,255), 1);
+        // Apply color gradient from black to cyan/white
+        for(int y = 0; y < visualMap.rows; y++) {
+            for(int x = 0; x < visualMap.cols; x++) {
+                float val = visualMap.at<uchar>(y,x) / 255.0f;
+                colored.at<cv::Vec3b>(y,x) = cv::Vec3b(
+                    static_cast<uchar>(255 * val),  // B
+                    static_cast<uchar>(255 * val),  // G
+                    static_cast<uchar>(255 * val)   // R
+                );
+            }
         }
         
         return colored;
@@ -363,72 +379,108 @@ cv::Mat visualizeRegionalFeatures(const std::vector<double>& regionalFeatures) {
 }
 
 cv::Mat visualizeTemporalFeatures(const std::vector<double>& temporalFeatures) {
-    const int height = 300;
-    const int width = 600;
+    const int height = 400;  // Increased height
+    const int width = 800;   // Increased width
     cv::Mat visualization = cv::Mat::zeros(height, width, CV_8UC3);
     visualization.setTo(cv::Scalar(255, 255, 255));
 
-    // Debug information
-    std::cout << "Visualizing temporal features. Count: " << temporalFeatures.size() << std::endl;
-
     if (temporalFeatures.empty()) {
-        std::cout << "No temporal features to visualize" << std::endl;
-        cv::putText(visualization, "No temporal features available (empty)",
+        cv::putText(visualization, "No temporal features available",
                     cv::Point(10, height/2),
                     cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 0));
         return visualization;
     }
 
-    // Print feature values for debugging
-    std::cout << "Temporal feature values: ";
-    for (const auto& val : temporalFeatures) {
-        std::cout << val << " ";
+    // Draw grid with labels
+    const int gridSpacing = 50;
+    for (int y = gridSpacing; y < height-50; y += gridSpacing) {
+        cv::line(visualization, cv::Point(50, y), 
+                cv::Point(width-20, y),
+                cv::Scalar(240, 240, 240), 1);
+        // Add Y-axis labels
+        std::string label = cv::format("%.1f", 1.0 - (y-50.0)/(height-100.0));
+        cv::putText(visualization, label,
+                    cv::Point(10, y+5),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(100, 100, 100));
     }
-    std::cout << std::endl;
 
-    // Draw grid
-    for (int i = 50; i < height; i += 50) {
-        cv::line(visualization, cv::Point(50, i), cv::Point(width-20, i),
-                cv::Scalar(200, 200, 200), 1);
-    }
-    for (int i = 50; i < width; i += 50) {
-        cv::line(visualization, cv::Point(i, 50), cv::Point(i, height-20),
-                cv::Scalar(200, 200, 200), 1);
+    // Draw X-axis grid and labels
+    const int xGridSpacing = (width-70) / 10;
+    for (int x = 50; x < width-20; x += xGridSpacing) {
+        cv::line(visualization, cv::Point(x, 50), 
+                cv::Point(x, height-50),
+                cv::Scalar(240, 240, 240), 1);
+        // Add X-axis labels
+        int frameNum = ((x-50) * temporalFeatures.size()) / (width-70);
+        cv::putText(visualization, cv::format("%d", frameNum),
+                    cv::Point(x-10, height-30),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(100, 100, 100));
     }
 
     // Draw axes
-    cv::line(visualization, cv::Point(50, height-50), cv::Point(width-20, height-50),
+    cv::line(visualization, cv::Point(50, height-50), 
+             cv::Point(width-20, height-50),
              cv::Scalar(0, 0, 0), 2);  // X-axis
-    cv::line(visualization, cv::Point(50, 50), cv::Point(50, height-50),
+    cv::line(visualization, cv::Point(50, 50), 
+             cv::Point(50, height-50),
              cv::Scalar(0, 0, 0), 2);  // Y-axis
 
-    // Plot points
+    // Add axis labels
+    cv::putText(visualization, "Frame",
+                cv::Point(width/2-20, height-10),
+                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0));
+    cv::putText(visualization, "Magnitude",
+                cv::Point(10, height/2),
+                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0),
+                1, cv::LINE_AA, true);
+
+    // Plot points with different colors and connect them
     const double maxVal = *std::max_element(temporalFeatures.begin(), temporalFeatures.end());
     const double scale = (height - 100.0) / (maxVal > 0.0 ? maxVal : 1.0);
-    
-    const int plotWidth = width - 70;
-    const double xStep = (temporalFeatures.size() > 1) ? 
-                        static_cast<double>(plotWidth - 50) / (temporalFeatures.size() - 1) : 
-                        plotWidth / 2.0;
+    const double xStep = static_cast<double>(width-70) / (temporalFeatures.size()-1);
 
+    std::vector<cv::Point> points;
     for (size_t i = 0; i < temporalFeatures.size(); ++i) {
-        const int xPos = 50 + static_cast<int>(i * xStep);
-        const int yPos = height - 50 - static_cast<int>(temporalFeatures[i] * scale);
+        int x = 50 + static_cast<int>(i * xStep);
+        int y = height - 50 - static_cast<int>(temporalFeatures[i] * scale);
+        points.push_back(cv::Point(x, y));
         
         // Draw point
-        cv::circle(visualization, cv::Point(xPos, yPos), 5, cv::Scalar(0, 0, 255), -1);
+        cv::circle(visualization, cv::Point(x, y), 4, 
+                  cv::Scalar(0, 100, 200), -1);  // Filled circle
+        cv::circle(visualization, cv::Point(x, y), 4, 
+                  cv::Scalar(0, 0, 0), 1);       // Black border
         
         // Add value label
         std::string valueStr = cv::format("%.2f", temporalFeatures[i]);
         cv::putText(visualization, valueStr,
-                    cv::Point(xPos - 20, yPos - 10),
+                    cv::Point(x-15, y-10),
                     cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0));
     }
 
-    // Add title
-    cv::putText(visualization, "Temporal Features",
+    // Connect points with a smooth line
+    cv::polylines(visualization, points, false,
+                 cv::Scalar(0, 100, 200), 2, cv::LINE_AA);
+
+    // Add title and legend
+    cv::putText(visualization, "Temporal Features Analysis",
                 cv::Point(width/3, 30),
-                cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 0));
+                cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 0));
+
+    // Add legend box
+    cv::rectangle(visualization, 
+                 cv::Point(width-150, 60),
+                 cv::Point(width-20, 100),
+                 cv::Scalar(250, 250, 250), -1);
+    cv::rectangle(visualization,
+                 cv::Point(width-150, 60),
+                 cv::Point(width-20, 100),
+                 cv::Scalar(200, 200, 200), 1);
+    cv::circle(visualization, cv::Point(width-130, 80), 4,
+               cv::Scalar(0, 100, 200), -1);
+    cv::putText(visualization, "Motion Magnitude",
+                cv::Point(width-120, 85),
+                cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0));
 
     return visualization;
 }

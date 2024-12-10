@@ -344,7 +344,7 @@ std::vector<double> GaitAnalyzer::extractGaitFeatures(const cv::Mat& symmetryMap
         combinedFeatures.push_back(0.0);
     }
     
-    std::cout << "Combined feature vector size: " << combinedFeatures.size() << "\n";
+    // std::cout << "Combined feature vector size: " << combinedFeatures.size() << "\n";
     
     // Validate final feature vector
     if (combinedFeatures.size() != EXPECTED_FEATURE_SIZE) {
