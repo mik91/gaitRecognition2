@@ -152,13 +152,13 @@ double GaitAnalyzer::computeFocusWeight(const cv::Point& p1, const cv::Point& p2
 
 std::vector<double> GaitAnalyzer::computeRegionalFeatures(const cv::Mat& symmetryMap) {
     std::vector<double> features;
-    const int numRegions = 4;
+    const int numRegions = 8;  // Increased from 4 to 8 for more detail
     
     int rows = symmetryMap.rows;
     int cols = symmetryMap.cols;
     
-    // Use larger regions to reduce sensitivity to small variations
-    features.reserve(numRegions);
+    features.reserve(numRegions * 2);  // Store both mean and variance for each region
+    
     for(int i = 0; i < numRegions; i++) {
         int startRow = (i * rows) / numRegions;
         int endRow = ((i + 1) * rows) / numRegions;
@@ -168,13 +168,9 @@ std::vector<double> GaitAnalyzer::computeRegionalFeatures(const cv::Mat& symmetr
         cv::Scalar mean, stdDev;
         cv::meanStdDev(region, mean, stdDev);
         
-        // Use both mean and standard deviation as features
-        double regionFeature = mean[0];
-        if (stdDev[0] > 1e-6) {  // Only add variation if it's meaningful
-            regionFeature *= (1.0 + stdDev[0]);
-        }
-        
-        features.push_back(regionFeature);
+        // Add both mean and standard deviation as features
+        features.push_back(mean[0]);
+        features.push_back(stdDev[0]);
     }
     
     return features;
@@ -189,42 +185,44 @@ std::vector<double> GaitAnalyzer::computeTemporalFeatures(const cv::Mat& current
     }
     recentMaps_.push_back(currentMap.clone());
 
-    // Need at least 2 frames for temporal features
     if (recentMaps_.size() >= 2) {
-        // Compute difference between current and previous frame
-        cv::Mat diff;
-        cv::absdiff(recentMaps_.back(), recentMaps_[recentMaps_.size()-2], diff);
+        // Enhanced temporal analysis
+        cv::Mat avgMotion = cv::Mat::zeros(currentMap.size(), CV_32F);
+        cv::Mat maxMotion = cv::Mat::zeros(currentMap.size(), CV_32F);
         
-        // Initialize statistical measures
-        cv::Scalar meanVal(0.0);
-        cv::Scalar stdDevVal(0.0);
-        cv::meanStdDev(diff, meanVal, stdDevVal);
+        // Analyze motion patterns across multiple frames
+        for (size_t i = 1; i < recentMaps_.size(); i++) {
+            cv::Mat diff;
+            cv::absdiff(recentMaps_[i], recentMaps_[i-1], diff);
+            
+            avgMotion += diff;
+            cv::max(maxMotion, diff, maxMotion);
+        }
         
-        // Get the actual values from Scalar objects
-        double meanDiff = meanVal[0];
-        double stdDev = stdDevVal[0];
+        avgMotion /= (recentMaps_.size() - 1);
         
-        // Create thresholded image using mean + stddev as threshold
-        cv::Mat thresholded;
-        double threshold = meanDiff + stdDev;
-        cv::threshold(diff, thresholded, threshold, 1.0, cv::THRESH_BINARY);
+        // Calculate various temporal metrics
+        cv::Scalar meanMotion, stdDevMotion;
+        cv::meanStdDev(avgMotion, meanMotion, stdDevMotion);
         
-        // Calculate area of significant change
-        double changeArea = cv::sum(thresholded)[0] / (diff.rows * diff.cols);
-        temporalFeatures.push_back(changeArea);
+        cv::Scalar maxMean, maxStd;
+        cv::meanStdDev(maxMotion, maxMean, maxStd);
         
-        // Add statistical measures
-        temporalFeatures.push_back(meanDiff);
-        temporalFeatures.push_back(stdDev);
+        // Add enhanced temporal features
+        temporalFeatures.push_back(meanMotion[0]);    // Average motion
+        temporalFeatures.push_back(stdDevMotion[0]);  // Motion variation
+        temporalFeatures.push_back(maxMean[0]);       // Peak motion
+        temporalFeatures.push_back(maxStd[0]);        // Peak motion variation
         
-        std::cout << "Temporal features - Change metrics:\n"
-                  << "  Area of change: " << changeArea << "\n"
-                  << "  Mean difference: " << meanDiff << "\n"
-                  << "  StdDev of difference: " << stdDev << "\n";
+        // Add motion direction features
+        cv::Mat motionDirection;
+        cv::phase(avgMotion, maxMotion, motionDirection);
+        cv::Scalar dirMean, dirStd;
+        cv::meanStdDev(motionDirection, dirMean, dirStd);
+        temporalFeatures.push_back(dirMean[0]);
+        temporalFeatures.push_back(dirStd[0]);
     } else {
-        // Fill with zeros if not enough frames
-        temporalFeatures = std::vector<double>(3, 0.0);
-        std::cout << "Temporal features - Not enough frames, using zeros\n";
+        temporalFeatures = std::vector<double>(6, 0.0);  // Adjusted size
     }
     
     return temporalFeatures;
@@ -361,40 +359,55 @@ std::vector<double> GaitAnalyzer::extractGaitFeatures(const cv::Mat& symmetryMap
 void GaitAnalyzer::normalizeFeatureVector(std::vector<double>& features, const std::string& name) {
     if (features.empty()) return;
     
-    // Find valid min and max values
+    // Improved normalization with outlier handling
+    std::vector<double> validValues;
+    validValues.reserve(features.size());
+    
+    // Collect valid values and handle outliers
+    for (const auto& val : features) {
+        if (!std::isnan(val) && !std::isinf(val) && std::abs(val) > 1e-20) {
+            validValues.push_back(val);
+        }
+    }
+    
+    if (validValues.empty()) {
+        std::fill(features.begin(), features.end(), 0.0);
+        return;
+    }
+    
+    // Calculate robust statistics using percentiles
+    std::sort(validValues.begin(), validValues.end());
+    size_t size = validValues.size();
+    double q1 = validValues[size * 0.25];
+    double q3 = validValues[size * 0.75];
+    double iqr = q3 - q1;
+    double lowerBound = q1 - 1.5 * iqr;
+    double upperBound = q3 + 1.5 * iqr;
+    
+    // Filter outliers and get min/max
     double minVal = std::numeric_limits<double>::max();
     double maxVal = -std::numeric_limits<double>::max();
     
-    for (const auto& val : features) {
-        if (!std::isnan(val) && !std::isinf(val) && std::abs(val) > 1e-20) {
+    for (const auto& val : validValues) {
+        if (val >= lowerBound && val <= upperBound) {
             minVal = std::min(minVal, val);
             maxVal = std::max(maxVal, val);
         }
     }
     
-    std::cout << name << " features before normalization - Range: [" 
-              << minVal << ", " << maxVal << "]\n";
-    
-    // Normalize to [0,1] range
-    if (maxVal - minVal > 1e-10) {  // Only normalize if there's meaningful variation
+    // Normalize features with outlier handling
+    double range = maxVal - minVal;
+    if (range > 1e-10) {
         for (auto& val : features) {
-            if (std::isnan(val) || std::isinf(val) || std::abs(val) < 1e-20) {
-                val = 0.0;
+            if (std::isnan(val) || std::isinf(val) || val < lowerBound || val > upperBound) {
+                val = 0.5; // Set outliers to middle value
             } else {
-                val = (val - minVal) / (maxVal - minVal);
+                val = (val - minVal) / range;
             }
         }
     } else {
-        // If all values are essentially the same, set to a constant value
         std::fill(features.begin(), features.end(), 0.5);
     }
-    
-    // Print sample of normalized values
-    std::cout << name << " features after normalization - First 5 values: ";
-    for (size_t i = 0; i < std::min(size_t(5), features.size()); i++) {
-        std::cout << features[i] << " ";
-    }
-    std::cout << "...\n";
 }
 
 std::vector<double> GaitAnalyzer::computeFourierDescriptors(const cv::Mat& symmetryMap) {

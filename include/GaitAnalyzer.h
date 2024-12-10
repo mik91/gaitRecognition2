@@ -73,7 +73,7 @@ private:
     bool isBackgroundInitialized_;
     std::vector<double> previousFeatures_;
     std::deque<cv::Mat> recentMaps_;  // For temporal analysis
-    static const size_t TEMPORAL_WINDOW = 5;  // Number of frames to consider for temporal analysis
+    static const size_t TEMPORAL_WINDOW = 20;  // Number of frames to consider for temporal analysis
 };
 
 } // namespace gait

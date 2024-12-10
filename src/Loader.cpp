@@ -15,11 +15,21 @@ void Loader::scanDataset() {
     // Standard conditions
     conditions_ = {"bg", "cl", "nm"};
     
-    // Scan for subjects
+    std::cout << "Scanning dataset path: " << datasetPath_ << std::endl;
+    
     try {
+        // Verify dataset path exists
+        if (!fs::exists(datasetPath_)) {
+            std::cerr << "Dataset path does not exist: " << datasetPath_ << std::endl;
+            return;
+        }
+
+        // Scan for subjects (test and test2 directories)
         for (const auto& entry : fs::directory_iterator(datasetPath_)) {
             if (fs::is_directory(entry)) {
-                subjectIds_.push_back(entry.path().filename().string());
+                std::string subjectId = entry.path().filename().string();
+                std::cout << "Found subject directory: " << subjectId << std::endl;
+                subjectIds_.push_back(subjectId);
             }
         }
         
@@ -33,51 +43,66 @@ std::vector<cv::Mat> Loader::loadSequence(const std::string& subjectId,
                                         const std::string& condition,
                                         int sequenceNumber) {
     std::vector<cv::Mat> frames;
-    std::string sequencePath = condition + "-" + formatNumber(sequenceNumber, 2);
-    std::filesystem::path fullPath = std::filesystem::path(datasetPath_) / subjectId / sequencePath;
     
-    std::cout << "Checking sequence path: " << fullPath << std::endl;
+    // Construct the sequence path
+    std::string seqNumberStr = formatNumber(sequenceNumber, 2);
+    std::string sequencePath = condition + "-" + seqNumberStr;
+    fs::path fullPath = fs::path(datasetPath_) / subjectId / sequencePath;
+    
+    std::cout << "Loading sequence from path: " << fullPath << std::endl;
     
     if (!fs::exists(fullPath)) {
         std::cout << "Warning: Sequence path does not exist: " << fullPath << std::endl;
         return frames;
     }
 
-    // Get prefix for this subject from actual files
+    // Get prefix for this subject
     std::string prefix = getSubjectPrefix(subjectId, condition, sequenceNumber);
     if (prefix.empty()) {
         std::cout << "Warning: Could not determine prefix for subject " << subjectId << std::endl;
         return frames;
     }
     
-    // Load frames
+    // Load frames at regular intervals (every 18 frames)
     for (int frameNum = 0; frameNum <= 180; frameNum += 18) {
         fs::path frameDir = fullPath / formatNumber(frameNum, 3);
         
+        if (!fs::exists(frameDir)) {
+            std::cout << "Frame directory does not exist: " << frameDir << std::endl;
+            continue;
+        }
+
         std::string framePrefix = prefix + "-" + condition + "-" + 
-                                formatNumber(sequenceNumber, 2) + "-" +
-                                formatNumber(frameNum, 3);
+                                seqNumberStr + "-" + formatNumber(frameNum, 3);
                            
         std::cout << "Looking for frames with prefix: " << framePrefix 
                  << " in " << frameDir << std::endl;
         
-        if (fs::exists(frameDir) && fs::is_directory(frameDir)) {
+        bool frameFound = false;
+        if (fs::is_directory(frameDir)) {
             for (const auto& entry : fs::directory_iterator(frameDir)) {
-                if (entry.path().extension() == ".png" && 
-                    entry.path().filename().string().find(framePrefix) == 0) {
-                    std::cout << "Loading frame: " << entry.path() << std::endl;
-                    cv::Mat frame = cv::imread(entry.path().string());
-                    if (!frame.empty()) {
-                        frames.push_back(frame);
-                        break;  // Take the first matching frame
+                if (entry.path().extension() == ".png") {
+                    std::string filename = entry.path().filename().string();
+                    if (filename.find(framePrefix) == 0) {
+                        std::cout << "Loading frame: " << entry.path() << std::endl;
+                        cv::Mat frame = cv::imread(entry.path().string());
+                        if (!frame.empty()) {
+                            frames.push_back(frame);
+                            frameFound = true;
+                            break;  // Take the first matching frame
+                        }
                     }
                 }
             }
         }
+        
+        if (!frameFound) {
+            std::cout << "No valid frame found for prefix: " << framePrefix << std::endl;
+        }
     }
     
     std::cout << "Loaded " << frames.size() << " frames for " 
-              << subjectId << " sequence " << condition << std::endl;
+              << subjectId << " sequence " << condition << "-" << seqNumberStr << std::endl;
     
     return frames;
 }
@@ -86,10 +111,14 @@ std::string Loader::getSubjectPrefix(const std::string& subjectId,
                                    const std::string& condition,
                                    int sequenceNumber) {
     // Build path to first frame directory
-    std::string sequencePath = condition + "-" + formatNumber(sequenceNumber, 2);
-    fs::path firstFrameDir = fs::path(datasetPath_) / subjectId / sequencePath / "000";
+    std::string seqStr = formatNumber(sequenceNumber, 2);
+    fs::path firstFrameDir = fs::path(datasetPath_) / subjectId / 
+                            (condition + "-" + seqStr) / "000";
+    
+    std::cout << "Looking for subject prefix in: " << firstFrameDir << std::endl;
     
     if (!fs::exists(firstFrameDir) || !fs::is_directory(firstFrameDir)) {
+        std::cout << "First frame directory does not exist: " << firstFrameDir << std::endl;
         return "";
     }
 
@@ -104,6 +133,8 @@ std::string Loader::getSubjectPrefix(const std::string& subjectId,
             }
         }
     }
+    
+    std::cout << "No valid prefix found in directory: " << firstFrameDir << std::endl;
     return "";
 }
 

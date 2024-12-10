@@ -18,7 +18,7 @@ public:
     bool savePaths() const;
 
 private:
-    PathConfig() = default;
+    PathConfig() = default;    
     std::map<std::string, std::string> paths_;
     std::string configFile_;
 };

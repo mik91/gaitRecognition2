@@ -47,8 +47,10 @@ bool GaitClassifier::analyzePatterns(const std::map<std::string, std::vector<std
     }
 }
 
-std::pair<std::string, double> GaitClassifier::identifyPerson(const std::vector<double>& testSequence, 
-                                                bool visualize) {
+std::pair<std::string, double> GaitClassifier::identifyPerson(
+    const std::vector<double>& testSequence,
+    bool visualize) {
+    
     if (!isModelTrained_ || trainingData_.empty()) {
         return {"unknown", 0.0};
     }
@@ -67,31 +69,117 @@ std::pair<std::string, double> GaitClassifier::identifyPerson(const std::vector<
             return {"unknown", 0.0};
         }
 
-        // Find nearest neighbor
-        double minDistance = std::numeric_limits<double>::max();
-        std::string bestMatch;
+        // Find k nearest neighbors
+        const int k = 5;  // Increased k for more robust classification
+        std::vector<std::pair<double, std::string>> distances;
+        distances.reserve(trainingData_.size());
 
+        // Calculate distances to all training samples
         for (size_t i = 0; i < trainingData_.size(); i++) {
             double distance = computeDistance(testSequence, trainingData_[i]);
-            if (distance < minDistance) {
-                minDistance = distance;
-                bestMatch = trainingLabels_[i];
+            distances.push_back({distance, trainingLabels_[i]});
+        }
+
+        // Sort by distance
+        std::sort(distances.begin(), distances.end());
+
+        // Count votes for each person in k nearest neighbors
+        std::map<std::string, int> votes;
+        std::map<std::string, double> confidences;
+        
+        if (visualize) {
+            std::cout << "\nNearest neighbors for test sequence:\n";
+        }
+
+        for (int i = 0; i < k && i < distances.size(); i++) {
+            votes[distances[i].second]++;
+            confidences[distances[i].second] += 1.0 / (distances[i].first + 1e-6);
+            
+            if (visualize) {
+                std::cout << "Neighbor " << (i+1) << ": " 
+                         << distances[i].second << " (distance: " 
+                         << distances[i].first << ")\n";
             }
         }
 
-        // Convert distance to similarity score
-        double similarity = 1.0 / (1.0 + minDistance);
-        
+        // Find person with most votes
+        std::string bestMatch;
+        int maxVotes = 0;
+        double bestConfidence = 0.0;
+
         if (visualize) {
+            std::cout << "\nVoting results:\n";
+        }
+
+        for (const auto& [person, voteCount] : votes) {
+            double confidence = confidences[person] / k;
+            if (visualize) {
+                std::cout << person << ": " << voteCount << " votes, confidence: " 
+                         << confidence << "\n";
+            }
+            
+            if (voteCount > maxVotes || 
+                (voteCount == maxVotes && confidences[person] > bestConfidence)) {
+                maxVotes = voteCount;
+                bestMatch = person;
+                bestConfidence = confidences[person];
+            }
+        }
+
+        // Calculate total confidence for normalization
+        double totalConfidence = 0.0;
+        for (const auto& [person, conf] : confidences) {
+            totalConfidence += conf;
+        }
+
+        // Normalize confidence
+        double confidence = totalConfidence > 0 ? bestConfidence / totalConfidence : 0.0;
+
+        if (visualize) {
+            std::cout << "\nFinal decision: " << bestMatch 
+                     << " with confidence: " << confidence << "\n\n";
             visualizeClassification(testSequence);
         }
-        
-        return {bestMatch, similarity};
+
+        return {bestMatch, confidence};
     }
     catch (const std::exception& e) {
         std::cerr << "Error in identifyPerson: " << e.what() << std::endl;
         return {"unknown", 0.0};
     }
+}
+
+double GaitClassifier::computeDistance(
+    const std::vector<double>& seq1, 
+    const std::vector<double>& seq2) {
+    
+    if (seq1.size() != seq2.size()) {
+        throw std::runtime_error("Feature vector size mismatch");
+    }
+
+    double sumSquaredDiff = 0.0;
+    double sumWeights = 0.0;
+    
+    // Weight different feature types differently
+    const int REGIONAL_FEATURES = 16;  // 8 regions * 2 (mean & stddev)
+    const int TEMPORAL_FEATURES = 6;
+    
+    for (size_t i = 0; i < seq1.size(); i++) {
+        double weight = 1.0;
+        
+        // Give higher weight to regional and temporal features
+        if (i < REGIONAL_FEATURES) {
+            weight = 2.0;  // Regional features weight
+        } else if (i < REGIONAL_FEATURES + TEMPORAL_FEATURES) {
+            weight = 1.5;  // Temporal features weight
+        }
+        
+        double diff = seq1[i] - seq2[i];
+        sumSquaredDiff += weight * (diff * diff);
+        sumWeights += weight;
+    }
+    
+    return std::sqrt(sumSquaredDiff / sumWeights);
 }
 
 void GaitClassifier::visualizeTrainingData(const std::string& windowName) {
@@ -162,19 +250,6 @@ void GaitClassifier::visualizeClassification(const std::vector<double>& testSequ
     // Show visualization
     cv::imshow(windowName, vis);
     cv::waitKey(1);
-}
-
-double GaitClassifier::computeDistance(const std::vector<double>& seq1, const std::vector<double>& seq2) {
-    if (seq1.size() != seq2.size()) {
-        throw std::runtime_error("Feature vector size mismatch");
-    }
-
-    double sumSquaredDiff = 0.0;
-    for (size_t i = 0; i < seq1.size(); i++) {
-        double diff = seq1[i] - seq2[i];
-        sumSquaredDiff += diff * diff;
-    }
-    return std::sqrt(sumSquaredDiff);
 }
 
 std::string GaitClassifier::getClusterStats() const {

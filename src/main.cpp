@@ -7,7 +7,7 @@
 #include <GaitClassifier.h>
 #include <PersonIdentifier.h>
 #include <PathConfig.h>
-#include <ExecutablePath.h>
+#include <BatchProcessor.h>
 
 std::vector<double> accumulateSequenceFeatures(const std::vector<std::vector<double>>& frameFeatures) {
     if (frameFeatures.empty()) {
@@ -136,18 +136,15 @@ int main() {
         // Initialize components
         auto& config = gait::PathConfig::getInstance();
 
-        // Get config path using ExecutablePath
-        std::filesystem::path configPath = gait::ExecutablePath::getConfigPath();
-        std::cout << "Found config path: " << configPath << std::endl;
-
-        if (!config.loadConfig(configPath.string())) {
-            std::cerr << "Failed to load path configuration from: " << configPath << std::endl;
+        // Load config with empty string to use hardcoded paths
+        if (!config.loadConfig("")) {
+            std::cerr << "Failed to initialize path configuration" << std::endl;
             return 1;
         }
 
         gait::Loader loader(config.getPath("DATASET_ROOT"));
         
-        gait::SymmetryParams params(27.0, 90.0, 0.1);
+        gait::SymmetryParams params(35.0, 100.0, 0.08);  // Adjusted parameters
         gait::GaitAnalyzer analyzer(params);
         gait::GaitClassifier classifier;
 
@@ -279,18 +276,61 @@ int main() {
         if (classifier.isModelTrained()) {
             gait::PersonIdentifier identifier(analyzer, classifier);
         
+            // while (true) {
+            //     std::cout << "\nEnter path to image for identification (or 'quit' to exit): ";
+            //     std::getline(std::cin, input);
+                
+            //     if (input == "quit") break;
+                
+            //     try {
+            //         auto [predictedPerson, confidence] = identifier.identifyFromImage(input, showVisualization);
+            //         std::cout << "Predicted person: " << predictedPerson << "\n"
+            //                 << "Confidence: " << confidence << "\n";
+            //     } catch (const std::exception& e) {
+            //         std::cerr << "Error processing image: " << e.what() << "\n";
+            //     }
+            // }
+
+            gait::BatchProcessor batchProcessor(analyzer, classifier);
+
             while (true) {
-                std::cout << "\nEnter path to image for identification (or 'quit' to exit): ";
+                std::cout << "\nChoose an option:\n"
+                        << "1. Process single image\n"
+                        << "2. Process folder\n"
+                        << "3. Quit\n"
+                        << "Choice: ";
+                
+                std::string input;
                 std::getline(std::cin, input);
                 
-                if (input == "quit") break;
-                
-                try {
-                    auto [predictedPerson, confidence] = identifier.identifyFromImage(input, showVisualization);
-                    std::cout << "Predicted person: " << predictedPerson << "\n"
-                            << "Confidence: " << confidence << "\n";
-                } catch (const std::exception& e) {
-                    std::cerr << "Error processing image: " << e.what() << "\n";
+                if (input == "1") {
+                    std::cout << "Enter path to image for identification: ";
+                    std::getline(std::cin, input);
+                    
+                    try {
+                        auto [predictedPerson, confidence] = identifier.identifyFromImage(input, showVisualization);
+                        std::cout << "Predicted person: " << predictedPerson << "\n"
+                                << "Confidence: " << confidence << "\n";
+                    } catch (const std::exception& e) {
+                        std::cerr << "Error processing image: " << e.what() << "\n";
+                    }
+                }
+                else if (input == "2") {
+                    std::cout << "Enter path to folder containing images: ";
+                    std::getline(std::cin, input);
+                    
+                    try {
+                        auto results = batchProcessor.processDirectory(input, showVisualization);
+                        std::cout << "Results saved to batch_results.csv in the input folder\n";
+                    } catch (const std::exception& e) {
+                        std::cerr << "Error processing folder: " << e.what() << "\n";
+                    }
+                }
+                else if (input == "3") {
+                    break;
+                }
+                else {
+                    std::cout << "Invalid option. Please try again.\n";
                 }
             }
         }

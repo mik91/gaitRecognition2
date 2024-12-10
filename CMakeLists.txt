@@ -14,7 +14,7 @@ include_directories(config)
 # Add source files
 add_executable(
     ${PROJECT_NAME}
-    src/ExecutablePath.cpp
+    src/BatchProcessor.cpp
     src/PathConfig.cpp
     src/PersonIdentifier.cpp
     src/GaitVisualization.cpp
