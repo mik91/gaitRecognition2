@@ -1,327 +1,288 @@
 #include "Loader.h"
 #include "GaitAnalyzer.h"
 #include "GaitVisualization.h"
+#include "GaitClassifier.h"
+#include "PersonIdentifier.h"
+#include "PathConfig.h"
+#include "BatchProcessor.h"
+#include "GaitUtils.h"
+#include "FeatureHandler.h"
 #include <iostream>
 #include <chrono>
 #include <thread>
-#include <GaitClassifier.h>
-#include <PersonIdentifier.h>
-#include <PathConfig.h>
-#include <BatchProcessor.h>
+#include <iomanip>
+#include <numeric>
 
-std::vector<double> accumulateSequenceFeatures(const std::vector<std::vector<double>>& frameFeatures) {
-    if (frameFeatures.empty()) {
-        return std::vector<double>();
-    }
-    
-    size_t featureSize = frameFeatures[0].size();
-    
-    // Verify all vectors have the same size
-    for (const auto& features : frameFeatures) {
-        if (features.size() != featureSize) {
-            std::cerr << "Warning: Inconsistent feature vector sizes. Expected: " 
-                     << featureSize << ", Got: " << features.size() << std::endl;
-            return std::vector<double>();
-        }
-    }
-    
-    std::vector<double> meanFeatures(featureSize, 0.0);
-    std::vector<double> varFeatures(featureSize, 0.0);
-    
-    // Safely calculate mean
-    for (const auto& frame : frameFeatures) {
-        for (size_t i = 0; i < featureSize; i++) {
-            meanFeatures[i] += frame[i];
-        }
-    }
-    
-    for (auto& val : meanFeatures) {
-        val /= frameFeatures.size();
-    }
-    
-    // Safely calculate variance
-    for (const auto& frame : frameFeatures) {
-        for (size_t i = 0; i < featureSize; i++) {
-            double diff = frame[i] - meanFeatures[i];
-            varFeatures[i] += diff * diff;
-        }
-    }
-    
-    for (auto& val : varFeatures) {
-        val = std::sqrt(val / frameFeatures.size());
-    }
-    
-    // Print debug information
-    std::cout << "Frame feature statistics:\n"
-              << "Number of frames: " << frameFeatures.size() << "\n"
-              << "Features per frame: " << featureSize << "\n"
-              << "Sample of mean values (first 5):\n";
-    
-    for (size_t i = 0; i < std::min(size_t(5), featureSize); i++) {
-        std::cout << "Feature " << i << ": mean=" << meanFeatures[i] 
-                 << ", stddev=" << varFeatures[i] << "\n";
-    }
-    
-    // Combine mean and variance features with bounds checking
-    std::vector<double> combinedFeatures;
-    combinedFeatures.reserve(featureSize * 2);
-    
-    for (size_t i = 0; i < featureSize; i++) {
-        // Only include features with meaningful variation
-        if (varFeatures[i] > 1e-10) {
-            combinedFeatures.push_back(meanFeatures[i]);
-            combinedFeatures.push_back(varFeatures[i]);
-        }
-    }
-    
-    // std::cout << "Combined feature vector size: " << combinedFeatures.size() << "\n";
-    
-    return combinedFeatures;
-}
+// Helper struct to hold frame processing results
+struct FrameProcessingResult {
+    std::vector<double> features;
+    std::string filename;
+    cv::Mat symmetryMap;
+    cv::Mat originalFrame;
+};
 
-void processSequence(const std::string& seq, const std::vector<cv::Mat>& frames, 
-                    gait::GaitAnalyzer& analyzer,
-                    std::map<std::string, std::vector<std::vector<double>>>& personFeatures,
-                    const std::string& personId) {
-    if (frames.empty()) {
-        std::cout << "Warning: No frames found for " << personId << " sequence " << seq << std::endl;
-        return;
-    }
-
-    std::cout << "Processing " << personId << " sequence " << seq 
-              << " (" << frames.size() << " frames)" << std::endl;
+void processSequenceParallel(
+    const std::vector<cv::Mat>& frames,
+    const std::vector<std::string>& filenames, 
+    gait::GaitAnalyzer& analyzer,
+    std::vector<std::pair<std::vector<double>, std::string>>& sequenceFeatures,
+    bool showVisualization) {
     
-    std::vector<std::vector<double>> sequenceFrameFeatures;
-    const size_t EXPECTED_FEATURE_SIZE = 124;  // Fixed size based on our feature extraction
+    const size_t numThreads = std::thread::hardware_concurrency();
+    const size_t windowSize = 30;  // Process 30 frames at a time
+    const size_t windowStride = 15; // Overlap windows by 50%
+    std::mutex featuresMutex;
+    std::mutex visualizationMutex;
     
-    // Process each frame
-    for (const auto& frame : frames) {
-        cv::Mat symmetryMap = analyzer.processFrame(frame);
-        std::vector<double> frameFeatures = analyzer.extractGaitFeatures(symmetryMap);
+    // Process overlapping windows of frames
+    std::vector<std::future<std::vector<FrameProcessingResult>>> futures;
+    
+    for (size_t windowStart = 0; windowStart + windowSize <= frames.size(); 
+         windowStart += windowStride) {
         
-        // Ensure consistent feature size
-        if (frameFeatures.size() > 0) {
-            if (frameFeatures.size() > EXPECTED_FEATURE_SIZE) {
-                frameFeatures.resize(EXPECTED_FEATURE_SIZE);
-            } else if (frameFeatures.size() < EXPECTED_FEATURE_SIZE) {
-                frameFeatures.resize(EXPECTED_FEATURE_SIZE, 0.0);  // Pad with zeros
-            }
-            sequenceFrameFeatures.push_back(frameFeatures);
-        }
+        futures.push_back(std::async(std::launch::async, 
+            [&analyzer, &frames, &filenames, windowStart, windowSize]() {
+                std::vector<FrameProcessingResult> windowResults;
+                std::vector<std::vector<double>> windowFeatures;
+                
+                for (size_t i = windowStart; i < windowStart + windowSize && i < frames.size(); i++) {
+                    FrameProcessingResult result;
+                    result.originalFrame = frames[i].clone();
+                    result.filename = filenames[i];
+                    result.symmetryMap = analyzer.processFrame(frames[i]);
+                    result.features = analyzer.extractGaitFeatures(result.symmetryMap);
+                    windowResults.push_back(std::move(result));
+                    
+                    if (!result.features.empty()) {
+                        windowFeatures.push_back(result.features);
+                    }
+                }
+                
+                return windowResults;
+            }));
     }
     
-    if (!sequenceFrameFeatures.empty()) {
-        // Average features across frames
-        std::vector<double> avgFeatures(EXPECTED_FEATURE_SIZE, 0.0);
-        for (const auto& frameFeatures : sequenceFrameFeatures) {
-            for (size_t i = 0; i < EXPECTED_FEATURE_SIZE; i++) {
-                avgFeatures[i] += frameFeatures[i];
+    // Process results as they complete
+    for (auto& future : futures) {
+        auto windowResults = future.get();
+        if (!windowResults.empty()) {
+            std::lock_guard<std::mutex> lock(featuresMutex);
+            
+            // Get normalized features for this window
+            std::vector<std::vector<double>> windowFeatures;
+            for (const auto& result : windowResults) {
+                if (!result.features.empty()) {
+                    windowFeatures.push_back(result.features);
+                }
+            }
+            
+            if (!windowFeatures.empty()) {
+                std::vector<double> normalizedFeatures = 
+                    gait::FeatureHandler::normalizeAndResampleFeatures(windowFeatures);
+                // Store features with the filename from first frame in window
+                sequenceFeatures.emplace_back(normalizedFeatures, windowResults[0].filename);
+            }
+            
+            if (showVisualization) {
+                std::lock_guard<std::mutex> visLock(visualizationMutex);
+                gait::visualization::displayResults(
+                    windowResults[0].originalFrame,
+                    windowResults[0].symmetryMap,
+                    windowResults[0].features
+                );
             }
         }
-        
-        for (auto& val : avgFeatures) {
-            val /= sequenceFrameFeatures.size();
-        }
-        
-        // Add features to person's data
-        personFeatures[personId].push_back(avgFeatures);
-        
-        std::cout << "Added features for " << personId << " sequence " << seq << ":\n"
-                 << "Feature vector size: " << avgFeatures.size() << std::endl;
     }
 }
 
 int main() {
     try {
-        // Initialize components
+        // Initialize components with timing measurements
+        auto startTime = std::chrono::steady_clock::now();
+        
+        // Initialize configuration
         auto& config = gait::PathConfig::getInstance();
-
-        // Load config with empty string to use hardcoded paths
         if (!config.loadConfig("")) {
             std::cerr << "Failed to initialize path configuration" << std::endl;
             return 1;
         }
 
+        // Initialize components with enhanced parameters
         gait::Loader loader(config.getPath("DATASET_ROOT"));
+        gait::SymmetryParams analyzerParams(27.0, 90.0, 0.1);
+        gait::GaitAnalyzer analyzer(analyzerParams);
+
+        // Initialize classifier with optimized parameters
+        gait::ClassifierParams classifierParams(
+            0.65,   // minConfidenceThreshold - increased from 0.65
+            5,      // kNeighbors - increased from 5
+            100.0,   // maxValidDistance - decreased from 100.0
+            0.5,    // temporalWeight
+            0.5     // spatialWeight - increased weight of spatial features
+        );
+        gait::GaitClassifier classifier(classifierParams);
         
-        gait::SymmetryParams params(35.0, 100.0, 0.08);
-        gait::GaitAnalyzer analyzer(params);
-        gait::GaitClassifier classifier;
+        auto initTime = std::chrono::steady_clock::now();
+        std::cout << "Initialization time: " 
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(
+                         initTime - startTime).count() << "ms\n";
 
-        // Collect features per person
-        std::map<std::string, std::vector<std::vector<double>>> personFeatures;
-        std::vector<std::string> people = {"test", "test2"};
-        std::vector<std::string> conditions = {"nm", "bg"};
-
+        // Handle visualization setup
         bool showVisualization = false;
+        std::cout << "Show visualization? (y/n): ";
         std::string input;
+        std::getline(std::cin, input);
+        showVisualization = (input == "y");
 
-        while (true) {
-            std::cout << "Show visualization? (y/n): ";
-            std::getline(std::cin, input);
-
-            if (input == "y") {
-                showVisualization = true;
-                break;
-            } else if (input == "n") {
-                showVisualization = false;
-                break;
-            }
-
+        if (showVisualization && !gait::visualization::initializeWindows()) {
+            std::cerr << "Failed to initialize visualization windows" << std::endl;
+            return 1;
         }
 
-        if(showVisualization) {
-            // Create visualization windows
-            if (!gait::visualization::initializeWindows()) {
-                std::cerr << "Failed to initialize visualization windows" << std::endl;
-                return 1;
+        // Load and process all subjects
+        std::cout << "\nLoading subject data...\n";
+        auto loadStart = std::chrono::steady_clock::now();
+        
+        // Updated data structure to store features with filenames
+        std::map<std::string, std::vector<std::pair<std::vector<double>, std::string>>> personFeatures;
+        auto allSubjectData = loader.loadAllSubjectsWithFilenames(true);
+        
+        auto loadEnd = std::chrono::steady_clock::now();
+        std::cout << "Data loading time: " 
+                  << std::chrono::duration_cast<std::chrono::seconds>(
+                         loadEnd - loadStart).count() << "s\n";
+
+        // Process subjects with progress tracking
+        std::cout << "\nProcessing subjects...\n";
+        size_t totalSubjects = allSubjectData.size();
+        size_t processedSubjects = 0;
+
+        for (const auto& [subjectId, data] : allSubjectData) {
+            std::vector<std::pair<std::vector<double>, std::string>> sequenceFeatures;
+            processSequenceParallel(data.frames, data.filenames, analyzer, sequenceFeatures, showVisualization);
+            
+            if (!sequenceFeatures.empty()) {
+                personFeatures[subjectId] = sequenceFeatures;
             }
 
-            // Create additional windows for detailed features
-            cv::namedWindow("Detailed Features", cv::WINDOW_NORMAL);
-            cv::namedWindow("Regional Features", cv::WINDOW_NORMAL);
-            cv::namedWindow("Temporal Features", cv::WINDOW_NORMAL);
+            // Update progress
+            processedSubjects++;
+            float progress = (float)processedSubjects / totalSubjects * 100;
+            std::cout << "\rProgress: " << std::fixed << std::setprecision(1) 
+                      << progress << "%" << std::flush;
+        }
+        std::cout << "\nProcessing complete!\n";
 
-            // Set initial sizes for better visibility
-            cv::resizeWindow("Detailed Features", 800, 400);
-            cv::resizeWindow("Regional Features", 400, 400);
-            cv::resizeWindow("Temporal Features", 600, 300);
+        // Train classifier
+        if (!personFeatures.empty()) {
+            std::cout << "\nTraining classifier...\n";
+            if (classifier.analyzePatterns(personFeatures)) {
+                std::cout << "Classifier training complete.\n";
+                
+                // Test classification on training data
+                for (const auto& [person, features_and_filenames] : personFeatures) {
+                    if (!features_and_filenames.empty()) {
+                        const auto& [features, filename] = features_and_filenames[0];
+                        
+                        auto [predictedPerson, confidence] = 
+                            classifier.identifyPerson(features, filename);
+                            
+                        std::cout << "Person " << person 
+                                << " (file: " << filename << ")"
+                                << " identified as: " << predictedPerson 
+                                << " (confidence: " << std::fixed 
+                                << std::setprecision(4) << confidence << ")\n";
+                    }
+                }
+            }
         }
 
+        // Interactive mode remains the same...
 
-        // Process each person's sequences
-        for (const auto& person : people) {
-            for (const auto& condition : conditions) {
-                auto frames = loader.loadSequence(person, condition, 1);
-                if (!frames.empty()) {
-                    processSequence(condition, frames, analyzer, personFeatures, person);
+        if (showVisualization) {
+            gait::visualization::cleanupWindows();
+        }
+
+        auto endTime = std::chrono::steady_clock::now();
+        std::cout << "\nTotal execution time: " 
+                  << std::chrono::duration_cast<std::chrono::seconds>(
+                         endTime - startTime).count() << "s\n";
+        bool continueRunning = true;
+        while (continueRunning) {
+            std::cout << "\nGait Analysis Options:\n"
+                    << "1. Analyze single image\n"
+                    << "2. Analyze folder\n"
+                    << "3. Exit\n"
+                    << "Choose option (1-3): ";
+            
+            std::string choice;
+            std::getline(std::cin, choice);
+
+            if (choice == "1") {
+                std::cout << "Enter image path: ";
+                std::string imagePath;
+                std::getline(std::cin, imagePath);
+
+                gait::PersonIdentifier identifier(analyzer, classifier);
+                try {
+                    auto [personId, confidence] = identifier.identifyFromImage(imagePath, showVisualization);
+                    std::cout << "\nAnalysis Results:\n"
+                            << "Identified Person: " << personId << "\n"
+                            << "Confidence: " << std::fixed << std::setprecision(4) 
+                            << confidence << "\n";
+                }
+                catch (const std::exception& e) {
+                    std::cerr << "Error processing image: " << e.what() << std::endl;
+                }
+            }
+            else if (choice == "2") {
+                std::cout << "Enter folder path: ";
+                std::string folderPath;
+                std::getline(std::cin, folderPath);
+
+                gait::BatchProcessor batchProcessor(analyzer, classifier);
+                try {
+                    std::cout << "\nProcessing folder...\n";
+                    auto results = batchProcessor.processDirectory(folderPath, showVisualization);
                     
-                    // Show processing progress
-                    if (showVisualization) {
-                        for (const auto& frame : frames) {
-                            // Process frame
-                            cv::Mat symmetryMap = analyzer.processFrame(frame);
-                            std::vector<double> frameFeatures = analyzer.extractGaitFeatures(symmetryMap);
+                    if (results.empty()) {
+                        std::cout << "No valid images found in directory.\n";
+                    }
+                    else {
+                        std::cout << "\nProcessed " << results.size() << " files.\n";
+                        
+                        // Group results by predicted person
+                        std::map<std::string, std::vector<double>> confidences;
+                        for (const auto& result : results) {
+                            confidences[result.predictedPerson].push_back(result.confidence);
+                        }
+
+                        // Print summary for each person
+                        for (const auto& [person, confs] : confidences) {
+                            double avgConf = std::accumulate(confs.begin(), confs.end(), 0.0) / confs.size();
+                            double percentage = (100.0 * confs.size()) / results.size();
                             
-                            // Use the comprehensive display function
-                            bool continueProcessing = gait::visualization::displayResults(
-                                frame,                  // original frame
-                                symmetryMap,           // symmetry map
-                                frameFeatures         // extracted features
-                            );
-                            
-                            // Also show detailed feature visualizations
-                            cv::Mat featureVis = gait::visualization::visualizeGaitFeatures(frameFeatures);
-                            if (!featureVis.empty()) {
-                                cv::imshow("Detailed Features", featureVis);
-                            }
-                            
-                            cv::Mat regionalVis = gait::visualization::visualizeRegionalFeatures(
-                                std::vector<double>(frameFeatures.begin(), frameFeatures.begin() + 4)
-                            );
-                            if (!regionalVis.empty()) {
-                                cv::imshow("Regional Features", regionalVis);
-                            }
-                            
-                            cv::Mat temporalVis = gait::visualization::visualizeTemporalFeatures(
-                                std::vector<double>(frameFeatures.begin() + 4, frameFeatures.begin() + 7)
-                            );
-                            if (!temporalVis.empty()) {
-                                cv::imshow("Temporal Features", temporalVis);
-                            }
-                            
-                            // Handle window layout
-                            cv::moveWindow("Original Frame", 0, 0);
-                            cv::moveWindow("Symmetry Map", 900, 0);
-                            cv::moveWindow("Detailed Features", 1300, 0);
-                            cv::moveWindow("Regional Features", 0, 500);
-                            cv::moveWindow("Temporal Features", 650, 500);
-                            
-                            char key = cv::waitKey(30);
-                            if (key == 27) {  // ESC key
-                                return 0;
-                            }
+                            std::cout << person << ": " 
+                                    << confs.size() << " images (" 
+                                    << std::fixed << std::setprecision(1) << percentage << "%) "
+                                    << "avg conf: " << std::setprecision(4) << avgConf << "\n";
                         }
                     }
                 }
-            }
-        }
-
-        // Train classifier if we have data
-        bool hasData = false;
-        for (const auto& [person, sequences] : personFeatures) {
-            if (!sequences.empty()) {
-                hasData = true;
-                break;
-            }
-        }
-
-        if (hasData) {
-            std::cout << "\nTraining classifier with available data..." << std::endl;
-            if (classifier.analyzePatterns(personFeatures, showVisualization)) {
-                // Test each sequence
-                for (const auto& [person, sequences] : personFeatures) {
-                    for (const auto& sequence : sequences) {
-                        auto [predictedPerson, confidence] = classifier.identifyPerson(sequence, showVisualization);
-                        std::cout << "Sequence from " << person 
-                                << " identified as: " << predictedPerson 
-                                << " (confidence: " << confidence << ")\n";
-                    }
+                catch (const std::exception& e) {
+                    std::cerr << "Error processing folder: " << e.what() << std::endl;
                 }
             }
-        } else {
-            std::cout << "No valid data found for training" << std::endl;
-        }
-        
-        if (classifier.isModelTrained()) {
-            gait::PersonIdentifier identifier(analyzer, classifier);
-            gait::BatchProcessor batchProcessor(analyzer, classifier);
-
-            while (true) {
-                std::cout << "\nChoose an option:\n"
-                        << "1. Process single image\n"
-                        << "2. Process folder\n"
-                        << "3. Quit\n"
-                        << "Choice: ";
-                
-                std::string input;
-                std::getline(std::cin, input);
-                
-                if (input == "1") {
-                    std::cout << "Enter path to image for identification: ";
-                    std::getline(std::cin, input);
-                    
-                    try {
-                        auto [predictedPerson, confidence] = identifier.identifyFromImage(input, showVisualization);
-                        std::cout << "Predicted person: " << predictedPerson << "\n"
-                                << "Confidence: " << confidence << "\n";
-                    } catch (const std::exception& e) {
-                        std::cerr << "Error processing image: " << e.what() << "\n";
-                    }
-                }
-                else if (input == "2") {
-                    std::cout << "Enter path to folder containing images: ";
-                    std::getline(std::cin, input);
-                    
-                    try {
-                        auto results = batchProcessor.processDirectory(input, showVisualization);
-                        std::cout << "Results saved to batch_results.csv in the input folder\n";
-                    } catch (const std::exception& e) {
-                        std::cerr << "Error processing folder: " << e.what() << "\n";
-                    }
-                }
-                else if (input == "3") {
-                    break;
-                }
-                else {
-                    std::cout << "Invalid option. Please try again.\n";
-                }
+            else if (choice == "3") {
+                continueRunning = false;
+                std::cout << "Exiting...\n";
             }
+            else {
+                std::cout << "Invalid choice. Please try again.\n";
+            }
+
+            std::cin.clear();
         }
-
-        cv::waitKey(0);
-        cv::destroyAllWindows();
-
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;

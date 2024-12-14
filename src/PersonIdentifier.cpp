@@ -1,6 +1,8 @@
+// PersonIdentifier.cpp
 #include "PersonIdentifier.h"
 #include "GaitVisualization.h"
 #include "PathConfig.h"
+#include "FeatureHandler.h"
 #include <stdexcept>
 #include <iostream>
 #include <filesystem>
@@ -26,76 +28,26 @@ std::pair<std::string, double> PersonIdentifier::identifyFromImage(
     const std::string& outputDir) {
     
     try {
-        // Convert input path to filesystem path
-        std::filesystem::path inputPath(imagePath);
-        std::filesystem::path resultDir(outputDir);
-
-        // Create output directory if it doesn't exist
-        std::filesystem::create_directories(resultDir);
-
-        // Load and validate image
-        cv::Mat inputImage = cv::imread(inputPath.string());
+        // Load and process image
+        cv::Mat inputImage = cv::imread(imagePath);
         if (inputImage.empty()) {
-            throw std::runtime_error("Failed to load image: " + inputPath.string());
+            throw std::runtime_error("Failed to load image: " + imagePath);
         }
 
-        // Process image through GaitAnalyzer
-        cv::Mat symmetryMap = analyzer_.processFrame(inputImage);
-        std::vector<double> features = analyzer_.extractGaitFeatures(symmetryMap);
-
-        // Debug output for feature vector
-        std::cout << "Feature vector composition:\n"
-                  << "Total features: " << features.size() << "\n"
-                  << "First 4 (Regional): ";
-        for (int i = 0; i < 4 && i < features.size(); i++) {
-            std::cout << features[i] << " ";
-        }
-        std::cout << "\nNext 3 (Temporal): ";
-        for (int i = 4; i < 7 && i < features.size(); i++) {
-            std::cout << features[i] << " ";
-        }
-        std::cout << "\nRemaining (Fourier): " 
-                  << (features.size() > 7 ? features.size() - 7 : 0) << " features\n";
-
-        // Validate feature vector
-        if (features.empty()) {
-            throw std::runtime_error("No features extracted from the image");
+        std::vector<cv::Mat> symmetryMaps;
+        std::vector<double> accumulatedFeatures = processImages({inputImage}, visualize, &symmetryMaps);
+        
+        if (accumulatedFeatures.empty()) {
+            throw std::runtime_error("Failed to extract features from image");
         }
 
-        // Validate feature values
-        for (size_t i = 0; i < features.size(); ++i) {
-            if (std::isnan(features[i]) || std::isinf(features[i])) {
-                std::cout << "Warning: Invalid feature value at index " << i 
-                         << ", replacing with 0" << std::endl;
-                features[i] = 0.0;
-            }
-        }
+        // Use classifier with accumulated features
+        auto [personId, confidence] = classifier_.identifyPerson(accumulatedFeatures, 
+                                                               std::filesystem::path(imagePath).filename().string());
 
-        // Use classifier to identify person
-        auto [personId, confidence] = classifier_.identifyPerson(features);
-
-        // Save results
-        saveResults(inputImage, symmetryMap, personId, confidence, resultDir.string());
-
-        // Handle visualization if requested
-        if (visualize) {
-            cv::namedWindow("Input Image", cv::WINDOW_NORMAL);
-            cv::namedWindow("Symmetry Map", cv::WINDOW_NORMAL);
-            cv::namedWindow("Result", cv::WINDOW_NORMAL);
-            
-            cv::Mat resultDisplay = inputImage.clone();
-            std::string resultText = "Predicted: " + personId;
-            std::string confidenceText = "Confidence: " + std::to_string(confidence);
-            cv::putText(resultDisplay, resultText, cv::Point(20, 30), 
-                       cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
-            cv::putText(resultDisplay, confidenceText, cv::Point(20, 70), 
-                       cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
-
-            cv::imshow("Input Image", inputImage);
-            cv::imshow("Symmetry Map", visualization::visualizeSymmetryMap(symmetryMap));
-            cv::imshow("Result", resultDisplay);
-            
-            cv::waitKey(1);
+        // Save results if visualization is requested
+        if (visualize && !symmetryMaps.empty()) {
+            saveResults(inputImage, symmetryMaps[0], personId, confidence, outputDir);
         }
         
         return {personId, confidence};
@@ -104,6 +56,78 @@ std::pair<std::string, double> PersonIdentifier::identifyFromImage(
         std::cerr << "Error processing image: " << e.what() << std::endl;
         return {"unknown", 0.0};
     }
+}
+
+std::pair<std::string, double> PersonIdentifier::identifyFromSequence(
+    const std::vector<std::string>& imagePaths,
+    bool visualize) {
+    
+    if (imagePaths.empty()) {
+        return {"unknown", 0.0};
+    }
+
+    try {
+        std::vector<cv::Mat> images;
+        images.reserve(imagePaths.size());
+
+        // Load all images
+        for (const auto& path : imagePaths) {
+            cv::Mat img = cv::imread(path);
+            if (!img.empty()) {
+                images.push_back(img);
+            }
+        }
+
+        if (images.empty()) {
+            throw std::runtime_error("No valid images loaded from sequence");
+        }
+
+        // Process all images and accumulate features
+        std::vector<double> accumulatedFeatures = processImages(images, visualize);
+        
+        if (accumulatedFeatures.empty()) {
+            throw std::runtime_error("Failed to extract features from sequence");
+        }
+
+        // Use first image path as reference for condition information
+        return classifier_.identifyPerson(accumulatedFeatures, 
+                                        std::filesystem::path(imagePaths[0]).filename().string());
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error processing sequence: " << e.what() << std::endl;
+        return {"unknown", 0.0};
+    }
+}
+
+std::vector<double> PersonIdentifier::processImages(
+    const std::vector<cv::Mat>& images,
+    bool visualize,
+    std::vector<cv::Mat>* symmetryMaps) {
+    
+    std::vector<std::vector<double>> allFeatures;
+    
+    for (const auto& image : images) {
+        cv::Mat symmetryMap = analyzer_.processFrame(image);
+        if (symmetryMap.empty()) {
+            continue;
+        }
+
+        if (symmetryMaps) {
+            symmetryMaps->push_back(symmetryMap);
+        }
+
+        std::vector<double> features = analyzer_.extractGaitFeatures(symmetryMap);
+        if (!features.empty()) {
+            allFeatures.push_back(features);
+        }
+
+        if (visualize) {
+            gait::visualization::displayResults(image, symmetryMap, features);
+        }
+    }
+
+    // Use FeatureHandler to normalize and accumulate features
+    return FeatureHandler::normalizeAndResampleFeatures(allFeatures);
 }
 
 void PersonIdentifier::saveResults(
@@ -115,25 +139,26 @@ void PersonIdentifier::saveResults(
     
     std::filesystem::path resultDir(outputDir);
     
-    // Create result visualization
-    cv::Mat resultDisplay = inputImage.clone();
-    std::string resultText = "Predicted: " + personId;
-    std::string confidenceText = "Confidence: " + std::to_string(confidence);
-    cv::putText(resultDisplay, resultText, cv::Point(20, 30), 
-                cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
-    cv::putText(resultDisplay, confidenceText, cv::Point(20, 70), 
-                cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
-
-    // Save all results
     try {
+        std::filesystem::create_directories(resultDir);
+        
+        // Create result visualization
+        cv::Mat resultDisplay = inputImage.clone();
+        std::string resultText = "Predicted: " + personId;
+        std::string confidenceText = "Confidence: " + std::to_string(confidence);
+        
+        cv::putText(resultDisplay, resultText, cv::Point(20, 30), 
+                    cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
+        cv::putText(resultDisplay, confidenceText, cv::Point(20, 70), 
+                    cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
+
+        // Save results
         cv::imwrite((resultDir / "result.png").string(), resultDisplay);
         cv::imwrite((resultDir / "symmetry_map.png").string(), 
                    visualization::visualizeSymmetryMap(symmetryMap));
         
-        // Get current time
-        std::time_t currentTime = std::time(nullptr);
-        
         // Save metadata
+        std::time_t currentTime = std::time(nullptr);
         std::ofstream metaFile(resultDir / "metadata.txt");
         metaFile << "Prediction Results\n"
                  << "=================\n"
@@ -146,4 +171,5 @@ void PersonIdentifier::saveResults(
         std::cerr << "Error saving results: " << e.what() << std::endl;
     }
 }
+
 } // namespace gait

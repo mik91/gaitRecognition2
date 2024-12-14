@@ -14,12 +14,14 @@ include_directories(config)
 # Add source files
 add_executable(
     ${PROJECT_NAME}
+    src/FeatureHandler.cpp
     src/BatchProcessor.cpp
     src/PathConfig.cpp
     src/PersonIdentifier.cpp
     src/GaitVisualization.cpp
     src/GaitAnalyzer.cpp
     src/GaitClassifier.cpp
+    src/GaitUtils.cpp
     src/Loader.cpp
     src/main.cpp
 )

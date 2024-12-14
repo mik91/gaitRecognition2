@@ -1,8 +1,12 @@
+// BatchProcessor.h
 #pragma once
 
-#include "PersonIdentifier.h"
+#include "GaitAnalyzer.h"
+#include "GaitClassifier.h"
+#include "GaitUtils.h"
 #include <vector>
 #include <string>
+#include <filesystem>
 
 namespace gait {
 
@@ -15,18 +19,19 @@ public:
         double processingTime;  // in milliseconds
     };
 
-    // Constructor
-    BatchProcessor(GaitAnalyzer& analyzer, GaitClassifier& classifier);
+    BatchProcessor(GaitAnalyzer& analyzer, GaitClassifier& classifier) 
+        : analyzer_(analyzer), classifier_(classifier) {}
 
-    // Main processing method
     std::vector<ProcessingResult> processDirectory(
         const std::string& inputDir,
         bool visualize = false,
         const std::vector<std::string>& validExtensions = {".jpg", ".jpeg", ".png", ".bmp"});
 
 private:
-    PersonIdentifier identifier_;
+    GaitAnalyzer& analyzer_;
+    GaitClassifier& classifier_;
     void summarizeResults(const std::vector<ProcessingResult>& results);
-    void writeSummaryReport(const std::vector<ProcessingResult>& results, std::ofstream& file);};
+    void writeSummaryReport(const std::vector<ProcessingResult>& results, std::ofstream& file);
+};
 
 } // namespace gait

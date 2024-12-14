@@ -7,13 +7,38 @@
 namespace gait {
 
 Loader::Loader(const std::string& datasetPath) 
-    : datasetPath_(datasetPath) {
+    : datasetPath_(datasetPath),
+      threadCount_(std::thread::hardware_concurrency()) {
     scanDataset();
 }
 
+bool Loader::validateCondition(const std::string& condition) {
+    try {
+        for (const auto& entry : fs::directory_iterator(datasetPath_)) {
+            if (fs::is_directory(entry)) {
+                // For each subject directory, check if any sequence of this condition exists
+                for (int seq = 1; seq <= 6; seq++) {
+                    std::string seqPath = condition + "-" + formatNumber(seq, 2);
+                    if (fs::exists(entry.path() / seqPath)) {
+                        return true; // Found at least one instance of this condition
+                    }
+                }
+            }
+        }
+    } catch (const fs::filesystem_error& e) {
+        std::cerr << "Error validating condition: " << e.what() << std::endl;
+    }
+    return false;
+}
+
 void Loader::scanDataset() {
-    // Standard conditions
-    conditions_ = {"bg", "cl", "nm"};
+    // Clear any existing data
+    conditions_.clear();
+    subjectIds_.clear();
+    conditionSequences_.clear();
+    
+    // Standard conditions to check
+    std::vector<std::string> potentialConditions = {"nm", "bg", "cl"};
     
     std::cout << "Scanning dataset path: " << datasetPath_ << std::endl;
     
@@ -24,86 +49,160 @@ void Loader::scanDataset() {
             return;
         }
 
+        // First, validate which conditions actually exist in the dataset
+        for (const auto& condition : potentialConditions) {
+            if (validateCondition(condition)) {
+                conditions_.push_back(condition);
+                std::cout << "Found valid condition: " << condition << std::endl;
+            } else {
+                std::cout << "Condition not found in dataset: " << condition << std::endl;
+            }
+        }
+
+        // Scan for subjects and their sequences in parallel
+        std::mutex subjectMutex;
+        std::vector<std::future<void>> futures;
+
         for (const auto& entry : fs::directory_iterator(datasetPath_)) {
             if (fs::is_directory(entry)) {
-                std::string subjectId = entry.path().filename().string();
-                std::cout << "Found subject directory: " << subjectId << std::endl;
-                subjectIds_.push_back(subjectId);
+                futures.push_back(std::async(std::launch::async, [this, entry, &subjectMutex]() {
+                    std::string subjectId = entry.path().filename().string();
+                    std::map<std::string, int> localConditionSeqs;
+                    
+                    // Scan conditions for this subject
+                    for (const auto& condition : conditions_) {
+                        int maxSeq = 1;
+                        for (int seq = 1; seq <= 6; seq++) {
+                            std::string seqPath = condition + "-" + formatNumber(seq, 2);
+                            if (fs::exists(entry.path() / seqPath)) {
+                                maxSeq = seq;
+                            }
+                        }
+                        localConditionSeqs[condition] = maxSeq;
+                    }
+
+                    // Thread-safe update of shared data
+                    {
+                        std::lock_guard<std::mutex> lock(subjectMutex);
+                        subjectIds_.push_back(subjectId);
+                        for (const auto& [condition, maxSeq] : localConditionSeqs) {
+                            conditionSequences_[condition] = 
+                                std::max(conditionSequences_[condition], maxSeq);
+                        }
+                    }
+                }));
             }
+        }
+
+        // Wait for all scanning to complete
+        for (auto& future : futures) {
+            future.wait();
+        }
+        
+        std::cout << "\nFound sequence counts per condition:" << std::endl;
+        for (const auto& [condition, maxSeq] : conditionSequences_) {
+            std::cout << condition << ": " << maxSeq << " sequences" << std::endl;
         }
         
         std::cout << "Found " << subjectIds_.size() << " subjects in dataset" << std::endl;
+        
     } catch (const fs::filesystem_error& e) {
         std::cerr << "Error scanning dataset: " << e.what() << std::endl;
     }
 }
 
-std::vector<cv::Mat> Loader::loadSequence(const std::string& subjectId,
-                                        const std::string& condition,
-                                        int sequenceNumber) {
-    std::vector<cv::Mat> frames;
+std::pair<std::vector<cv::Mat>, std::vector<std::string>> Loader::loadSequence(
+    const std::string& subjectId,
+    const std::string& condition,
+    int sequenceNumber) {
     
-    // Construct the sequence path
+    auto seqIt = conditionSequences_.find(condition);
+    if (seqIt == conditionSequences_.end() || sequenceNumber > seqIt->second) {
+        return {{}, {}};
+    }
+    
     std::string seqNumberStr = formatNumber(sequenceNumber, 2);
     std::string sequencePath = condition + "-" + seqNumberStr;
     fs::path fullPath = fs::path(datasetPath_) / subjectId / sequencePath;
     
-    // std::cout << "Loading sequence from path: " << fullPath << std::endl;
-    
     if (!fs::exists(fullPath)) {
-        std::cout << "Warning: Sequence path does not exist: " << fullPath << std::endl;
-        return frames;
+        return {{}, {}};
     }
 
-    // Get prefix for this subject
-    std::string prefix = getSubjectPrefix(subjectId, condition, sequenceNumber);
-    if (prefix.empty()) {
-        std::cout << "Warning: Could not determine prefix for subject " << subjectId << std::endl;
-        return frames;
-    }
-    
-    // Load frames at regular intervals (every 18 frames)
-    for (int frameNum = 0; frameNum <= 180; frameNum += 18) {
-        fs::path frameDir = fullPath / formatNumber(frameNum, 3);
-        
-        if (!fs::exists(frameDir)) {
-            std::cout << "Frame directory does not exist: " << frameDir << std::endl;
-            continue;
+    try {
+        std::vector<fs::path> framePaths;
+        std::string prefix = getSubjectPrefix(subjectId, condition, sequenceNumber);
+        if (prefix.empty()) {
+            return {{}, {}};
         }
 
-        std::string framePrefix = prefix + "-" + condition + "-" + 
-                                seqNumberStr + "-" + formatNumber(frameNum, 3);
-                           
-        // std::cout << "Looking for frames with prefix: " << framePrefix 
-        //          << " in " << frameDir << std::endl;
+        std::string framePrefix = prefix + "-" + condition + "-" + seqNumberStr;
         
-        bool frameFound = false;
-        if (fs::is_directory(frameDir)) {
-            for (const auto& entry : fs::directory_iterator(frameDir)) {
-                if (entry.path().extension() == ".png") {
-                    std::string filename = entry.path().filename().string();
-                    if (filename.find(framePrefix) == 0) {
-                        // std::cout << "Loading frame: " << entry.path() << std::endl;
-                        cv::Mat frame = cv::imread(entry.path().string());
-                        if (!frame.empty()) {
-                            frames.push_back(frame);
-                            frameFound = true;
-                            break;  // Take the first matching frame
-                        }
+        for (const auto& entry : fs::recursive_directory_iterator(fullPath)) {
+            if (entry.is_regular_file() && 
+                entry.path().extension() == ".png" &&
+                entry.path().filename().string().find(framePrefix) == 0) {
+                framePaths.push_back(entry.path());
+            }
+        }
+
+        if (framePaths.empty()) {
+            return {{}, {}};
+        }
+
+        return loadFramesParallel(framePaths);
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error loading sequence: " << e.what() << std::endl;
+        return {{}, {}};
+    }
+}
+
+std::map<std::string, Loader::SubjectData> Loader::loadAllSubjectsWithFilenames(
+    bool includeAllConditions) {
+    
+    std::map<std::string, SubjectData> allSubjectData;
+    std::mutex mapMutex;
+    std::vector<std::future<void>> futures;
+
+    // Process subjects in parallel
+    for (const auto& subjectId : subjectIds_) {
+        futures.push_back(std::async(std::launch::async, [this, &allSubjectData, &mapMutex, 
+                                    subjectId, includeAllConditions]() {
+            SubjectData subjectData;
+            
+            for (const auto& condition : conditions_) {
+                if (!includeAllConditions && condition != "nm") {
+                    continue;
+                }
+
+                int maxSeq = getMaxSequenceNumber(condition);
+                for (int seq = 1; seq <= maxSeq; seq++) {
+                    auto [sequenceFrames, sequenceFilenames] = 
+                        loadSequence(subjectId, condition, seq);
+                    
+                    if (!sequenceFrames.empty()) {
+                        subjectData.frames.insert(subjectData.frames.end(),
+                            sequenceFrames.begin(), sequenceFrames.end());
+                        subjectData.filenames.insert(subjectData.filenames.end(),
+                            sequenceFilenames.begin(), sequenceFilenames.end());
                     }
                 }
             }
-        }
-        
-        if (!frameFound) {
-            std::cout << "No valid frame found for prefix: " << framePrefix << std::endl;
-        }
+
+            if (!subjectData.frames.empty()) {
+                std::lock_guard<std::mutex> lock(mapMutex);
+                allSubjectData[subjectId] = std::move(subjectData);
+            }
+        }));
     }
-    
-    std::cout << "Loaded " << frames.size() << " frames for " 
-              << subjectId << " sequence " << condition << "-" << seqNumberStr << std::endl;
-    
-    return frames;
+
+    // Wait for all loading to complete
+    for (auto& future : futures) {
+        future.wait();
+    }
+
+    return allSubjectData;
 }
 
 std::string Loader::getSubjectPrefix(const std::string& subjectId, 
@@ -143,4 +242,141 @@ std::string Loader::formatNumber(int number, int width) const {
     return ss.str();
 }
 
+int Loader::getMaxSequenceNumber(const std::string& condition) const {
+    auto it = conditionSequences_.find(condition);
+    if (it != conditionSequences_.end()) {
+        return it->second;
+    }
+    // Return 1 as default if condition not found (backwards compatibility)
+    std::cerr << "Warning: No sequence information found for condition: " << condition 
+              << ". Defaulting to 1." << std::endl;
+    return 1;
+}
+
+std::map<std::string, std::vector<cv::Mat>> Loader::loadAllSubjects(bool includeAllConditions) {
+    std::map<std::string, std::vector<cv::Mat>> allSubjectData;
+    std::mutex mapMutex;
+    std::vector<std::future<void>> futures;
+
+    // Process subjects in parallel
+    for (const auto& subjectId : subjectIds_) {
+        futures.push_back(std::async(std::launch::async, [this, &allSubjectData, &mapMutex, 
+                                    subjectId, includeAllConditions]() {
+            std::vector<cv::Mat> subjectImages;
+            
+            for (const auto& condition : conditions_) {
+                if (!includeAllConditions && condition != "nm") {
+                    continue;
+                }
+
+                int maxSeq = getMaxSequenceNumber(condition);
+                for (int seq = 1; seq <= maxSeq; seq++) {
+                    auto sequenceImages = loadSequence(subjectId, condition, seq);
+                    if (!sequenceImages.first.empty()) {
+                        subjectImages.insert(subjectImages.end(),
+                            sequenceImages.first.begin(), sequenceImages.first.end());
+                    }
+                }
+            }
+
+            if (!subjectImages.empty()) {
+                std::lock_guard<std::mutex> lock(mapMutex);
+                allSubjectData[subjectId] = std::move(subjectImages);
+            }
+        }));
+    }
+
+    // Wait for all loading to complete
+    for (auto& future : futures) {
+        future.wait();
+    }
+
+    return allSubjectData;
+}
+
+std::pair<std::vector<cv::Mat>, std::vector<std::string>> Loader::loadFramesParallel(
+    const std::vector<fs::path>& framePaths) {
+    
+    if (framePaths.empty()) {
+        return {{}, {}};
+    }
+
+    // Calculate chunk size for each thread
+    size_t totalFrames = framePaths.size();
+    size_t framesPerThread = totalFrames / threadCount_;
+    size_t remainingFrames = totalFrames % threadCount_;
+
+    // Prepare thread results
+    std::vector<std::vector<cv::Mat>> threadFrames(threadCount_);
+    std::vector<std::vector<std::string>> threadFilenames(threadCount_);
+    std::vector<std::thread> threads;
+
+    // Launch threads
+    for (size_t i = 0; i < threadCount_; ++i) {
+        size_t startIdx = i * framesPerThread;
+        size_t endIdx = (i + 1) * framesPerThread;
+        if (i == threadCount_ - 1) {
+            endIdx += remainingFrames;
+        }
+
+        threads.emplace_back(&Loader::processFrameChunk, this,
+                           std::ref(framePaths), startIdx, endIdx,
+                           std::ref(threadFrames[i]),
+                           std::ref(threadFilenames[i]));
+    }
+
+    // Wait for all threads to complete
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    // Combine results
+    std::vector<cv::Mat> allFrames;
+    std::vector<std::string> allFilenames;
+    size_t totalLoadedFrames = 0;
+    
+    for (const auto& threadFrames : threadFrames) {
+        totalLoadedFrames += threadFrames.size();
+    }
+    
+    allFrames.reserve(totalLoadedFrames);
+    allFilenames.reserve(totalLoadedFrames);
+
+    for (size_t i = 0; i < threadCount_; ++i) {
+        allFrames.insert(allFrames.end(),
+                        std::make_move_iterator(threadFrames[i].begin()),
+                        std::make_move_iterator(threadFrames[i].end()));
+        allFilenames.insert(allFilenames.end(),
+                          threadFilenames[i].begin(),
+                          threadFilenames[i].end());
+    }
+
+    return {allFrames, allFilenames};
+}
+
+void Loader::processFrameChunk(
+    const std::vector<fs::path>& paths,
+    size_t startIdx,
+    size_t endIdx,
+    std::vector<cv::Mat>& outputFrames,
+    std::vector<std::string>& outputFilenames) {
+    
+    outputFrames.reserve(endIdx - startIdx);
+    outputFilenames.reserve(endIdx - startIdx);
+    
+    for (size_t i = startIdx; i < endIdx; ++i) {
+        // Read image in grayscale mode
+        cv::Mat frame = cv::imread(paths[i].string(), cv::IMREAD_GRAYSCALE);
+        
+        if (!frame.empty()) {
+            // Convert to 3-channel image if needed
+            cv::Mat threeChannelFrame;
+            cv::cvtColor(frame, threeChannelFrame, cv::COLOR_GRAY2BGR);
+            outputFrames.push_back(threeChannelFrame);
+            outputFilenames.push_back(paths[i].filename().string());
+        } else {
+            std::cerr << "Failed to load frame: " << paths[i].string() << std::endl;
+        }
+    }
+}
 } // namespace gait
