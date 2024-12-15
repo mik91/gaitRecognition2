@@ -19,16 +19,11 @@ std::vector<BatchProcessor::ProcessingResult> BatchProcessor::processDirectory(
     const std::vector<std::string>& validExtensions) {
     
     std::vector<ProcessingResult> results;
-    std::vector<cv::Mat> allImages;
+    std::vector<cv::Mat> frames;
     std::vector<std::string> filenames;
 
-    // Add error checking
-    if (!std::filesystem::exists(inputDir)) {
-        std::cerr << "Directory does not exist: " << inputDir << std::endl;
-        return results;
-    }
-
-    // First collect all valid images with error checking
+    // Loading files phase
+    std::cout << "\nCollecting files..." << std::endl;
     try {
         for (const auto& entry : std::filesystem::directory_iterator(inputDir)) {
             if (entry.is_regular_file()) {
@@ -40,89 +35,103 @@ std::vector<BatchProcessor::ProcessingResult> BatchProcessor::processDirectory(
                     
                     cv::Mat img = cv::imread(entry.path().string());
                     if (!img.empty()) {
-                        allImages.push_back(img);
+                        frames.push_back(img);
                         filenames.push_back(entry.path().filename().string());
-                        // std::cout << "Loaded image: " << entry.path().filename().string() << std::endl;
                     }
                 }
             }
         }
+        std::cout << "Found " << frames.size() << " valid images" << std::endl;
     } catch (const std::exception& e) {
-        std::cerr << "Error processing directory: " << e.what() << std::endl;
+        std::cerr << "Error collecting files: " << e.what() << std::endl;
         return results;
     }
 
-    if (allImages.empty()) {
-        std::cerr << "No valid images found in directory" << std::endl;
-        return results;
-    }
-
-    // Process all images and accumulate features with bounds checking
+    // Processing phase
     std::vector<std::vector<double>> allFeatures;
-    for (size_t i = 0; i < allImages.size(); i++) {
-        try {
-            if (i == 95) {
-                std::cout << "Processing images...\n";
-            }   
-            cv::Mat symmetryMap = analyzer_.processFrame(allImages[i]);
-            // std::cout << "Processed image " << filenames[i] << std::endl;
-            if (!symmetryMap.empty()) {
-                std::vector<double> frameFeatures = analyzer_.extractGaitFeatures(symmetryMap);
-                if (!frameFeatures.empty()) {
-                    allFeatures.push_back(frameFeatures);
-                }
-            }
-        } catch (const std::exception& e) {
-            std::cerr << "Error processing image " << filenames[i] << ": " << e.what() << std::endl;
-            continue;
+    allFeatures.reserve(frames.size());
+
+    std::cout << "\nProcessing frames..." << std::endl;
+    for (size_t i = 0; i < frames.size(); i++) {
+        if (i % 5 == 0) {  // Update more frequently
+            std::cout << "\rFrame " << i+1 << "/" << frames.size() 
+                     << " (" << (i * 100) / frames.size() << "%)" << std::flush;
         }
-    }
-
-    if (allFeatures.empty()) {
-        std::cerr << "No features could be extracted from images" << std::endl;
-        return results;
-    }
-
-    // Assuming config is an instance of a class that provides the getPath method
-    auto& config = gait::PathConfig::getInstance();
-
-    try {
-        // Accumulate features for the whole sequence
-        std::vector<double> accumulatedFeatures = FeatureHandler::normalizeAndResampleFeatures(allFeatures);  
-
-        if (!accumulatedFeatures.empty()) {
-            // Get first filename as representative for sequence
-            std::string representative_filename = filenames[0];
-            
-            // Get single prediction for all images using the representative filename
-            auto [predictedPerson, confidence] = classifier_.identifyPerson(
-                accumulatedFeatures, 
-                representative_filename  // Pass the representative filename
-            );
-            
-            // Create individual results but use the same prediction
-            for (const auto& filename : filenames) {
-                ProcessingResult result;
-                result.filename = filename;
-                result.predictedPerson = predictedPerson;
-                result.confidence = confidence;
-                result.processingTime = 0; // Set actual processing time if needed
-                results.push_back(result);
+        
+        cv::Mat symmetryMap = analyzer_.processFrame(frames[i]);
+        if (!symmetryMap.empty()) {
+            std::vector<double> frameFeatures = analyzer_.extractGaitFeatures(symmetryMap);
+            if (!frameFeatures.empty()) {
+                allFeatures.push_back(frameFeatures);
             }
         }
-    } catch (const std::exception& e) {
-        std::cerr << "Error during classification: " << e.what() << std::endl;
-        return results;
     }
+    std::cout << "\nProcessed " << allFeatures.size() << " frames successfully" << std::endl;
 
-    // Save results and write summary
-    if (!results.empty()) {
+    // Classification phase
+    if (!allFeatures.empty()) {
+        std::cout << "\nGenerating sequence features..." << std::endl;
+        std::vector<double> accumulatedFeatures = 
+            FeatureHandler::normalizeAndResampleFeatures(allFeatures);
+            
+        std::cout << "Classifying sequence..." << std::endl;
+        auto classifyStart = std::chrono::steady_clock::now();
+        
+        auto [predictedPerson, confidence] = classifier_.identifyPerson(
+            accumulatedFeatures, filenames[0]);
+            
+        auto classifyDuration = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now() - classifyStart).count();
+            
+        std::cout << "\nClassification Results:" << std::endl;
+        std::cout << "------------------------" << std::endl;
+        if (confidence == 0.0) {
+            std::cout << "Result: Unknown/Rejected" << std::endl;
+            std::cout << "Reason: ";
+            if (predictedPerson == "unknown") {
+                std::cout << "Subject not in database" << std::endl;
+            } else {
+                std::cout << "Low confidence match with " << predictedPerson 
+                        << " (possible different condition)" << std::endl;
+            }
+        } else {
+            std::cout << "Predicted Person: " << predictedPerson << std::endl;
+            std::cout << "Confidence: " << std::fixed << std::setprecision(4) 
+                    << confidence << std::endl;
+            std::cout << "Status: " << (confidence > 0.85 ? "Strong match" : "Moderate match") 
+                    << std::endl;
+        }
+        std::cout << "Classification time: " << classifyDuration << " seconds" << std::endl;
+        
+        // Create results
+        for (const auto& filename : filenames) {
+            ProcessingResult result;
+            result.filename = filename;
+            result.predictedPerson = predictedPerson;
+            result.confidence = confidence;
+            result.processingTime = classifyDuration;
+            results.push_back(result);
+        }
+
+        // Immediately write results
+        auto& config = PathConfig::getInstance();
         std::filesystem::path outputPath = config.getPath("RESULTS_DIR") + "/batch_results.txt";
         std::ofstream outputFile(outputPath);
         if (outputFile.is_open()) {
             writeSummaryReport(results, outputFile);
+            std::cout << "\nResults saved to: " << outputPath << std::endl;
+        } else {
+            std::cerr << "Failed to save results to file" << std::endl;
         }
-        summarizeResults(results);
+        
+        // Print summary
+        std::cout << "\nSummary:" << std::endl;
+        std::cout << "--------" << std::endl;
+        std::cout << "Total images processed: " << results.size() << std::endl;
+        std::cout << "Most likely match: " << predictedPerson << std::endl;
+        std::cout << "Confidence: " << confidence << std::endl;
+    } else {
+        std::cerr << "No features could be extracted from images" << std::endl;
     }
 
     return results;
@@ -136,53 +145,72 @@ void BatchProcessor::summarizeResults(const std::vector<ProcessingResult>& resul
 
     // Calculate statistics
     double totalConfidence = 0.0;
-    double totalTime = 0.0;
     std::map<std::string, int> personCounts;
     
     for (const auto& result : results) {
         totalConfidence += result.confidence;
-        totalTime += result.processingTime;
         personCounts[result.predictedPerson]++;
     }
 
-    // Define threshold for minimum percentage to be considered valid
-    const double MIN_PERCENTAGE_THRESHOLD = 30.0; // 30%
-
-    // Find the most frequent prediction
-    std::string mostLikelyMatch = "unknown";
-    double highestPercentage = 0.0;
-    double avgConfidence = 0.0;
-
+    // Calculate percentages and gather stats
+    std::vector<std::pair<std::string, std::pair<int, double>>> predictions;
     for (const auto& [person, count] : personCounts) {
         double percentage = (100.0 * count) / results.size();
-        if (percentage > highestPercentage) {
-            highestPercentage = percentage;
-            // Only assign most likely match if it meets the threshold
-            if (percentage >= MIN_PERCENTAGE_THRESHOLD) {
-                mostLikelyMatch = person;
-                // Calculate average confidence for this person
-                double personConfidence = 0.0;
-                int confCount = 0;
-                for (const auto& result : results) {
-                    if (result.predictedPerson == person) {
-                        personConfidence += result.confidence;
-                        confCount++;
-                    }
-                }
-                avgConfidence = personConfidence / confCount;
+        double avgConfidence = 0.0;
+        int confCount = 0;
+        
+        for (const auto& result : results) {
+            if (result.predictedPerson == person) {
+                avgConfidence += result.confidence;
+                confCount++;
             }
+        }
+        avgConfidence /= confCount;
+        
+        predictions.push_back({person, {count, avgConfidence}});
+    }
+
+    // Sort predictions by count
+    std::sort(predictions.begin(), predictions.end(),
+              [](const auto& a, const auto& b) { 
+                  return a.second.first > b.second.first; 
+              });
+
+    // Print detailed summary
+    std::cout << "\nDetailed Analysis Results:" << std::endl;
+    std::cout << "=========================" << std::endl;
+    std::cout << "Total frames processed: " << results.size() << std::endl;
+    std::cout << "\nPredictions breakdown:" << std::endl;
+    
+    for (const auto& [person, stats] : predictions) {
+        double percentage = (100.0 * stats.first) / results.size();
+        std::cout << std::fixed << std::setprecision(2);
+        
+        if (person == "unknown") {
+            std::cout << "Rejected frames: " << stats.first 
+                     << " (" << percentage << "%) - likely unknown or different condition" << std::endl;
+        } else if (stats.second > 0.0) {
+            std::cout << "Person " << person << ": " << stats.first 
+                     << " frames (" << percentage << "%) with avg confidence: " 
+                     << std::setprecision(4) << stats.second << std::endl;
         }
     }
 
-    // Print summary with adjusted output
-    std::cout << "\nTotal images processed: " << results.size() << "\n"
-              << "Most likely match: " << mostLikelyMatch 
-              << " (" << std::fixed << std::setprecision(1) 
-              << (mostLikelyMatch != "unknown" ? highestPercentage : 0.0) 
-              << "% of predictions, "
-              << std::setprecision(4) << avgConfidence << " avg confidence)\n"
-              << "Average confidence: " << (totalConfidence / results.size()) << "\n"
-              << "Average processing time: " << (totalTime / results.size()) << " ms\n";
+    // Print final conclusion
+    std::cout << "\nFinal conclusion: ";
+    if (!predictions.empty() && predictions[0].second.second > 0.0) {
+        double mainPredictionPercentage = (100.0 * predictions[0].second.first) / results.size();
+        if (mainPredictionPercentage > 70.0) {
+            std::cout << "Strong match with " << predictions[0].first 
+                     << " (confidence: " << std::setprecision(4) 
+                     << predictions[0].second.second << ")" << std::endl;
+        } else {
+            std::cout << "Uncertain match - possible different condition or unknown subject" 
+                     << std::endl;
+        }
+    } else {
+        std::cout << "Unknown subject or different condition" << std::endl;
+    }
 }
 
 void BatchProcessor::writeSummaryReport(

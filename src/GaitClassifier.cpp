@@ -26,156 +26,144 @@ bool GaitClassifier::analyzePatterns(
     const std::map<std::string, 
                   std::vector<std::pair<std::vector<double>, std::string>>>& personFeatures) {
     
-    if (personFeatures.empty()) return false;
-    
-    // Pre-allocate memory for all sequences
-    size_t totalSequences = 0;
-    for (const auto& [_, sequences] : personFeatures) {
-        totalSequences += sequences.size();
+    if (personFeatures.empty()) {
+        std::cerr << "No person features provided for training" << std::endl;
+        return false;
     }
-    trainingSequences_.reserve(totalSequences);
-    trainingData_.reserve(totalSequences);
-    trainingLabels_.reserve(totalSequences);
-
-    // Process data in parallel using thread pool
-    const size_t numThreads = std::thread::hardware_concurrency();
-    std::vector<std::future<std::vector<SequenceInfo>>> futures;
-    std::mutex dataMutex;
-
-    for (const auto& [person, sequences] : personFeatures) {
-        futures.push_back(std::async(std::launch::async, [this, &person, &sequences]() {
-            std::vector<SequenceInfo> threadSequences;
-            threadSequences.reserve(sequences.size());
-
-            for (const auto& [seq, filename] : sequences) {
-                if (!seq.empty()) {
+    
+    try {
+        // Clear existing data
+        trainingSequences_.clear();
+        trainingData_.clear();
+        trainingLabels_.clear();
+        
+        std::cout << "\nStarting training process..." << std::endl;
+        std::cout << "Number of subjects: " << personFeatures.size() << std::endl;
+        
+        // Process each person's data
+        for (const auto& [person, sequences] : personFeatures) {
+            std::cout << "Processing subject " << person << ": " 
+                      << sequences.size() << " sequences" << std::endl;
+                      
+            for (const auto& [features, filename] : sequences) {
+                if (!features.empty()) {
+                    // Store sequence info
                     SequenceInfo info;
                     info.label = person;
                     info.condition = extractCondition(filename);
-                    info.features = seq;
-                    threadSequences.push_back(std::move(info));
+                    info.features = features;
+                    trainingSequences_.push_back(info);
+                    
+                    // Also update legacy data structures
+                    trainingData_.push_back(features);
+                    trainingLabels_.push_back(person);
                 }
             }
-            return threadSequences;
-        }));
-    }
-
-    // Collect results
-    for (auto& future : futures) {
-        auto threadResults = future.get();
-        std::lock_guard<std::mutex> lock(dataMutex);
-        trainingSequences_.insert(trainingSequences_.end(), 
-                                std::make_move_iterator(threadResults.begin()),
-                                std::make_move_iterator(threadResults.end()));
-        
-        // Also update legacy data structures
-        for (const auto& info : threadResults) {
-            trainingData_.push_back(info.features);
-            trainingLabels_.push_back(info.label);
         }
+        
+        if (trainingSequences_.empty()) {
+            std::cerr << "No valid sequences after processing" << std::endl;
+            return false;
+        }
+        
+        std::cout << "Computing feature statistics..." << std::endl;
+        computeFeatureStatistics();
+        
+        std::cout << "Computing covariance matrix..." << std::endl;
+        computeCovarianceMatrix();
+        
+        isModelTrained_ = true;
+        std::cout << "Training completed successfully" << std::endl;
+        std::cout << "Total training sequences: " << trainingSequences_.size() << std::endl;
+        std::cout << "Feature dimension: " << featureMeans_.size() << std::endl;
+        
+        return true;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error during training: " << e.what() << std::endl;
+        isModelTrained_ = false;
+        return false;
     }
-
-    if (trainingData_.empty()) return false;
-
-    // Compute statistics in parallel
-    std::future<void> statsFuture = std::async(std::launch::async, 
-        [this]() { computeFeatureStatistics(); });
-    std::future<void> covFuture = std::async(std::launch::async, 
-        [this]() { computeCovarianceMatrix(); });
-
-    // Wait for completion
-    statsFuture.wait();
-    covFuture.wait();
-    
-    isModelTrained_ = true;
-    return true;
 }
 
 std::pair<std::string, double> GaitClassifier::identifyPerson(
     const std::vector<double>& testSequence,
     const std::string& testFilename) {
     
-    if (!isModelTrained_ || testSequence.empty()) {
+    if (!isModelTrained_) {
+        std::cerr << "Model not trained! Please check if model file exists and is loaded properly" << std::endl;
         return {"unknown", 0.0};
     }
-    
-    std::string testCondition = extractCondition(testFilename);
-    auto normalizedTest = normalizeFeatures(testSequence);
-    
-    // Calculate distances in parallel using thread pool
-    const size_t numThreads = std::thread::hardware_concurrency();
-    const size_t batchSize = trainingSequences_.size() / numThreads;
-    std::vector<std::future<std::vector<std::pair<double, SequenceInfo>>>> futures;
-    
-    for (size_t i = 0; i < numThreads; ++i) {
-        size_t start = i * batchSize;
-        size_t end = (i == numThreads - 1) ? trainingSequences_.size() 
-                                          : (i + 1) * batchSize;
-        
-        futures.push_back(std::async(std::launch::async, 
-            [this, &normalizedTest, start, end]() {
-                std::vector<std::pair<double, SequenceInfo>> batchDistances;
-                batchDistances.reserve(end - start);
-                
-                for (size_t j = start; j < end; ++j) {
-                    auto normalizedTrain = normalizeFeatures(trainingSequences_[j].features);
-                    
-                    // Compute distances efficiently
-                    double euclidean = computeEuclideanDistance(normalizedTest, normalizedTrain);
-                    double dtw = computeDTWDistance(normalizedTest, normalizedTrain);
-                    double mahalanobis = computeMahalanobisDistance(normalizedTest, normalizedTrain);
-                    
-                    double combinedDist = 0.4 * euclidean + 0.4 * dtw + 0.2 * mahalanobis;
-                    batchDistances.emplace_back(combinedDist, trainingSequences_[j]);
-                }
-                return batchDistances;
-            }));
+
+    // Add size validation
+    if (testSequence.empty() || featureMeans_.empty()) {
+        std::cerr << "Invalid feature vectors" << std::endl;
+        return {"unknown", 0.0};
     }
 
-    // Collect and merge results
-    std::vector<std::pair<double, SequenceInfo>> allDistances;
-    allDistances.reserve(trainingSequences_.size());
-    
-    for (auto& future : futures) {
-        auto batchResults = future.get();
-        allDistances.insert(allDistances.end(), 
-                          std::make_move_iterator(batchResults.begin()),
-                          std::make_move_iterator(batchResults.end()));
+    if (testSequence.size() != featureMeans_.size()) {
+        std::cerr << "Feature size mismatch! Expected " << featureMeans_.size() 
+                  << " but got " << testSequence.size() << std::endl;
+        return {"unknown", 0.0};
     }
 
-    // Sort results
-    std::partial_sort(allDistances.begin(), 
-                     allDistances.begin() + params_.kNeighbors,
-                     allDistances.end());
+    // Set maximum computation time
+    const auto startTime = std::chrono::steady_clock::now();
+    const auto timeoutDuration = std::chrono::seconds(30);  // 30 second timeout
 
-    // Process k-nearest neighbors
-    std::map<std::string, double> votes;
-    double totalWeight = 0.0;
-    
-    for (int i = 0; i < params_.kNeighbors; i++) {
-        const auto& [dist, info] = allDistances[i];
-        double weight = std::exp(-dist);
+    try {
+        std::string testCondition = extractCondition(testFilename);
+        auto normalizedTest = normalizeFeatures(testSequence);
         
-        if (info.condition == testCondition) {
-            weight *= 2.0;  // Boost same condition matches
+        std::vector<std::pair<double, SequenceInfo>> allDistances;
+        allDistances.reserve(trainingSequences_.size());
+
+        // Calculate distances with timeout check
+        for (const auto& trainSeq : trainingSequences_) {
+            // Check timeout
+            if (std::chrono::steady_clock::now() - startTime > timeoutDuration) {
+                std::cerr << "Classification timed out after 30 seconds" << std::endl;
+                return {"unknown", 0.0};
+            }
+
+            auto normalizedTrain = normalizeFeatures(trainSeq.features);
+            double distance = computeEuclideanDistance(normalizedTest, normalizedTrain);
+            allDistances.emplace_back(distance, trainSeq);
+        }
+
+        // Sort with timeout check
+        if (std::chrono::steady_clock::now() - startTime > timeoutDuration) {
+            std::cerr << "Classification timed out during sorting" << std::endl;
+            return {"unknown", 0.0};
+        }
+
+        std::partial_sort(allDistances.begin(), 
+                         allDistances.begin() + params_.kNeighbors,
+                         allDistances.end());
+
+        // Get k nearest neighbors
+        std::string bestMatch = "unknown";
+        std::map<std::string, int> votes;
+        
+        for (int i = 0; i < params_.kNeighbors && i < allDistances.size(); i++) {
+            votes[allDistances[i].second.label]++;
+            if (votes[allDistances[i].second.label] > votes[bestMatch]) {
+                bestMatch = allDistances[i].second.label;
+            }
+        }
+
+        double confidence = computeConditionAwareConfidence(testCondition, allDistances, bestMatch);
+
+        if (confidence == 0.0) {
+            return {"unknown", 0.0};
         }
         
-        votes[info.label] += weight;
-        totalWeight += weight;
+        return {bestMatch, confidence};
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error during classification: " << e.what() << std::endl;
+        return {"unknown", 0.0};
     }
-
-    // Find best match
-    auto bestMatch = std::max_element(votes.begin(), votes.end(),
-        [](const auto& a, const auto& b) { return a.second < b.second; });
-
-    double confidence = computeConditionAwareConfidence(testCondition, allDistances, 
-                                                      bestMatch->first);
-
-    if (confidence > params_.minConfidenceThreshold) {
-        return {bestMatch->first, confidence};
-    }
-    
-    return {"unknown", confidence};
 }
 
 double GaitClassifier::computeConditionAwareConfidence(
@@ -187,104 +175,93 @@ double GaitClassifier::computeConditionAwareConfidence(
         return 0.0;
     }
     
-    // Look at top k and also examine distribution in larger neighborhood
+    // Analyze k-nearest neighbors
     size_t k = std::min(static_cast<size_t>(params_.kNeighbors), distances.size());
-    size_t extendedK = std::min(k * 3, distances.size()); // Look at 3x more neighbors
-    
-    // Analyze close neighbors
     int matchCount = 0;
-    double matchDistance = 0.0;
-    double nonMatchDistance = 0.0;
-    int nonMatchCount = 0;
+    double totalMatchDistance = 0.0;
+    double totalDistance = 0.0;
+    std::set<std::string> uniqueClasses;
     
-    // Analyze extended neighborhood
-    int extendedMatchCount = 0;
-    std::map<std::string, int> classDistribution;
-    
-    // Process top k neighbors
+    // First pass: collect statistics
     for (size_t i = 0; i < k; i++) {
         const auto& [dist, info] = distances[i];
+        uniqueClasses.insert(info.label);
+        totalDistance += dist;
+        
         if (info.label == predictedClass) {
             matchCount++;
-            matchDistance += dist;
-        } else {
-            nonMatchCount++;
-            nonMatchDistance += dist;
+            totalMatchDistance += dist;
         }
     }
     
-    // Process extended neighborhood
-    for (size_t i = 0; i < extendedK; i++) {
-        const auto& [dist, info] = distances[i];
-        classDistribution[info.label]++;
-        if (info.label == predictedClass) {
-            extendedMatchCount++;
-        }
+    // Early rejection for scattered predictions
+    if (uniqueClasses.size() > 3 || matchCount == 0) {
+        return 0.0;
     }
     
-    if (matchCount == 0) return 0.0;
-    
-    // Calculate basic confidence measures
-    matchDistance /= matchCount;
-    nonMatchDistance = nonMatchCount > 0 ? nonMatchDistance / nonMatchCount : matchDistance * 2;
-    
+    // Calculate base metrics
     double matchRatio = static_cast<double>(matchCount) / k;
-    double distanceRatio = matchDistance / nonMatchDistance;
+    double avgMatchDistance = matchCount > 0 ? totalMatchDistance / matchCount : 0.0;
+    double avgDistance = totalDistance / k;
     
-    // Calculate distribution score
-    double distributionScore = 0.0;
-    if (!classDistribution.empty()) {
-        int maxCount = 0;
-        int totalCount = 0;
-        for (const auto& [_, count] : classDistribution) {
-            maxCount = std::max(maxCount, count);
-            totalCount += count;
-        }
-        
-        // Strong class should dominate the neighborhood
-        distributionScore = static_cast<double>(maxCount) / totalCount;
-        
-        // Penalize if matches are scattered
-        if (classDistribution.size() > 2) {  // More than 2 different classes in neighborhood
-            distributionScore *= 0.8;
-        }
+    // Check if distances are too large (unknown subject)
+    if (avgDistance > params_.maxValidDistance * 0.7) {
+        return 0.0;
     }
     
-    // Calculate extended match ratio
-    double extendedMatchRatio = static_cast<double>(extendedMatchCount) / extendedK;
+    // Calculate confidence components
+    double matchConfidence = 1.0 / (1.0 + std::exp(-5.0 * (matchRatio - 0.5)));
+    double distanceConfidence = std::exp(-avgMatchDistance / params_.maxValidDistance);
+    double distributionConfidence = 1.0 - (static_cast<double>(uniqueClasses.size() - 1) / k);
     
-    // Combine scores with weights
-    double confidence = 0.3 * matchRatio +                 // Close neighbor matches
-                       0.2 * (1.0 - distanceRatio) +       // Distance separation
-                       0.3 * distributionScore +           // Class distribution
-                       0.2 * extendedMatchRatio;          // Extended neighborhood matches
+    // Weighted combination of confidence components
+    double confidence = 0.4 * matchConfidence + 
+                       0.4 * distanceConfidence + 
+                       0.2 * distributionConfidence;
     
-    // Scale to [0.5, 1.0] range for valid matches
-    confidence = 0.5 + 0.5 * confidence;
-    
-    // Condition match bonus (smaller than before)
-    int conditionMatches = 0;
-    for (size_t i = 0; i < k; i++) {
-        if (distances[i].second.condition == testCondition && 
-            distances[i].second.label == predictedClass) {
-            conditionMatches++;
-        }
+    // Adjust for condition match
+    if (testCondition == distances[0].second.condition) {
+        confidence *= 1.05;  // Reduced bonus from 1.1 to 1.05
     }
     
-    // Small condition match bonus
-    confidence += 0.02 * conditionMatches;
-    
-    // Additional penalty for scattered matches
-    if (classDistribution.size() > 2) {
-        confidence *= 0.85;  // Penalty for too many different classes
+    // Additional penalties
+    if (matchRatio < 0.5) {
+        confidence *= 0.8;  // Penalty for minority predictions
     }
     
-    // Cap final confidence
-    confidence = std::min(1.0, confidence);
+    if (uniqueClasses.size() > 1) {
+        confidence *= (1.0 - 0.1 * (uniqueClasses.size() - 1));  // Penalty for class diversity
+    }
+    
+    // Scale to reasonable range and cap maximum
+    confidence = 0.6 + 0.35 * confidence;  // Scale to [0.6, 0.95] range
+    confidence = std::min(0.95, confidence);  // Cap maximum at 0.95
+    
+    // Final threshold for unknown subjects
+    if (confidence < params_.minConfidenceThreshold) {
+        return 0.0;
+    }
     
     return confidence;
 }
-
+// 0.7 * baseConfidence + 0.3 * distanceConfidence;
+    // Calculate base confidence from match ratio
+    // double matchRatio = static_cast<double>(matchCount) / k;
+    // double avgMatchDistance = totalMatchDistance / matchCount;
+    
+    // // Calculate confidence using sigmoid function
+    // double baseConfidence = 1.0 / (1.0 + std::exp(-5.0 * (matchRatio - 0.5)));
+    
+    // // Adjust confidence based on distance
+    // double distanceConfidence = std::exp(-avgMatchDistance / params_.maxValidDistance);
+    
+    // // Final confidence calculation
+    // double confidence = 0.7 * baseConfidence + 0.3 * distanceConfidence;
+    
+    // // Add small bonus for condition match
+    // if (testCondition == distances[0].second.condition) {
+    //     confidence *= 1.1;
+    // }
 double GaitClassifier::computeMahalanobisDistance(
     const std::vector<double>& seq1,
     const std::vector<double>& seq2) const {
@@ -532,8 +509,9 @@ void GaitClassifier::saveModel(const std::string& filename) const {
 }
 
 bool GaitClassifier::loadModel(const std::string& filename) {
-    cv::FileStorage fs(filename, cv::FileStorage::READ);
+    std::cout << "Loading model from: " << filename << std::endl;
     
+    cv::FileStorage fs(filename, cv::FileStorage::READ);
     if (!fs.isOpened()) {
         std::cerr << "Failed to open model file: " << filename << std::endl;
         return false;
@@ -552,10 +530,13 @@ bool GaitClassifier::loadModel(const std::string& filename) {
         fs["feature_stddevs"] >> featureStdDevs_;
         fs["covariance_matrix"] >> covarianceMatrix_;
         
-        // Load training data
         int numSamples, featureSize;
         fs["num_samples"] >> numSamples;
         fs["feature_size"] >> featureSize;
+        
+        std::cout << "Model info:" << std::endl;
+        std::cout << "Number of training samples: " << numSamples << std::endl;
+        std::cout << "Feature dimension: " << featureSize << std::endl;
         
         trainingData_.clear();
         trainingLabels_.clear();
@@ -568,11 +549,17 @@ bool GaitClassifier::loadModel(const std::string& filename) {
             fs["sample_" + std::to_string(i)] >> sample;
             fs["label_" + std::to_string(i)] >> label;
             
+            if (sample.size() != featureSize) {
+                std::cerr << "Invalid feature size in sample " << i << std::endl;
+                return false;
+            }
+            
             trainingData_.push_back(sample);
             trainingLabels_.push_back(label);
         }
         
         isModelTrained_ = true;
+        std::cout << "Model loaded successfully" << std::endl;
         return true;
     }
     catch (const cv::Exception& e) {

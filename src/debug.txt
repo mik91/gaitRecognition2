@@ -1,83 +1,63 @@
-Found valid condition: nm
-Condition not found in dataset: bg
-Condition not found in dataset: cl
+nter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\001\nm-01\054
 
-Found sequence counts per condition:
-nm: 1 sequences
-Found 4 subjects in dataset
+Processing folder...
 
-Loading subject data...
-Data loading time: 4s
-Progress: 100.0%
-Training classifier...
-Empty training data, cannot compute covariance matrix
+Collecting files...
+Found 84 valid images
 
-Validating classifier...
-Subject test -> predicted as test (confidence: 0.7)
-Subject test2 -> predicted as test2 (confidence: 0.7)
-Subject test3 -> predicted as test3 (confidence: 0.7)
-Subject test4 -> predicted as unknown (confidence: 0.6)
-Classifier training complete.
-Training time: 238s
-Show visualization? (y/n): n
+Processing frames...
+Frame 81/84 (95%)
+Processed 84 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test
+Confidence: 0.8385
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 84
+Most likely match: test
+Confidence: 0.8385
 
 Gait Analysis Options:
 1. Analyze single image
 2. Analyze folder
 3. Exit
 Choose option (1-3): 2
-Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\004\nm-01\162
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\001\nm-06\180
 
 Processing folder...
 
-Total images processed: 82
-Most likely match: unknown (0.0% of predictions, 0.6428 avg confidence)
-Average confidence: 0.6428
-Average processing time: 0.0000 ms
+Collecting files...
+Found 68 valid images
 
-Gait Analysis Options:
-1. Analyze single image
-2. Analyze folder
-3. Exit
-Choose option (1-3): 2
-Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\003\nm-01\180
+Processing frames...
+Frame 66/68 (95%)
+Processed 68 frames successfully
 
-Processing folder...
+Generating sequence features...
+Classifying sequence...
 
-Total images processed: 85
-Most likely match: test3 (100.0% of predictions, 0.6514 avg confidence)
-Average confidence: 0.6514
-Average processing time: 0.0000 ms
+Classification Results:
+------------------------
+Predicted Person: test
+Confidence: 0.0000
+Classification time: 0 seconds
 
-Gait Analysis Options:
-1. Analyze single image
-2. Analyze folder
-3. Exit
-Choose option (1-3): 2
-Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\002\002\nm-01\000
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
 
-Processing folder...
-Processing images...
-
-Total images processed: 101
-Most likely match: test2 (100.0% of predictions, 0.6529 avg confidence)
-Average confidence: 0.6529
-Average processing time: 0.0000 ms
-
-Gait Analysis Options:
-1. Analyze single image
-2. Analyze folder
-3. Exit
-Choose option (1-3): 2
-Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\001\nm-01\000
-
-Processing folder...
-Processing images...
-
-Total images processed: 96
-Most likely match: test3 (100.0% of predictions, 0.7799 avg confidence)
-Average confidence: 0.7799
-Average processing time: 0.0000 ms
+Summary:
+--------
+Total images processed: 68
+Most likely match: test
+Confidence: 0.0000
 
 Gait Analysis Options:
 1. Analyze single image
@@ -88,49 +68,158 @@ Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\00
 
 Processing folder...
 
+Collecting files...
+Found 62 valid images
+
+Processing frames...
+Frame 61/62 (96%)
+Processed 62 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test
+Confidence: 0.8933
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
 Total images processed: 62
-Most likely match: test (100.0% of predictions, 0.9423 avg confidence)
-Average confidence: 0.9423
-Average processing time: 0.0000 ms
+Most likely match: test
+Confidence: 0.8933
 
 Gait Analysis Options:
 1. Analyze single image
 2. Analyze folder
 3. Exit
 Choose option (1-3): 2
-Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\001\nm-01\162
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\003\nm-01\162
 
 Processing folder...
 
-Total images processed: 62
-Most likely match: test (100.0% of predictions, 0.6691 avg confidence)
-Average confidence: 0.6691
-Average processing time: 0.0000 ms
+Collecting files...
+Found 83 valid images
+
+Processing frames...
+Frame 81/83 (96%)
+Processed 83 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test3
+Confidence: 0.8800
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 83
+Most likely match: test3
+Confidence: 0.8800
 
 Gait Analysis Options:
 1. Analyze single image
 2. Analyze folder
 3. Exit
 Choose option (1-3): 2
-Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\001\nm-02\180
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\003\nm-02\180
 
 Processing folder...
 
-Total images processed: 74
-Most likely match: unknown (0.0% of predictions, 0.6085 avg confidence)
-Average confidence: 0.6085
-Average processing time: 0.0000 ms
+Collecting files...
+Found 89 valid images
+
+Processing frames...
+Frame 86/89 (95%)
+Processed 89 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test3
+Confidence: 0.9493
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 89
+Most likely match: test3
+Confidence: 0.9493
 
 Gait Analysis Options:
 1. Analyze single image
 2. Analyze folder
 3. Exit
 Choose option (1-3): 2
-Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\001\nm-01\090
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\005\nm-06\180
 
 Processing folder...
 
-Total images processed: 56
-Most likely match: test2 (100.0% of predictions, 0.7768 avg confidence)
-Average confidence: 0.7768
-Average processing time: 0.0000 ms
+Collecting files...
+Found 76 valid images
+
+Processing frames...
+Frame 76/76 (98%)
+Processed 76 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test4
+Confidence: 0.0000
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 76
+Most likely match: test4
+Confidence: 0.0000
+
+Gait Analysis Options:
+1. Analyze single image
+2. Analyze folder
+3. Exit
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\004\nm-06\180
+
+Processing folder...
+
+Collecting files...
+Found 88 valid images
+
+Processing frames...
+Frame 86/88 (96%)
+Processed 88 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test4
+Confidence: 0.8962
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 88
+Most likely match: test4
+Confidence: 0.8962

@@ -109,7 +109,7 @@ int main() {
         // Initialize components
         gait::SymmetryParams analyzerParams(27.0, 90.0, 0.1);
         gait::GaitAnalyzer analyzer(analyzerParams);
-        gait::ClassifierParams classifierParams(0.65, 5, 100.0, 0.5, 0.5);
+        gait::ClassifierParams classifierParams(0.65, 7, 100.0, 0.5, 0.5);
         gait::GaitClassifier classifier(classifierParams);
 
         // Ask user whether to train new model or load existing one
@@ -161,19 +161,17 @@ int main() {
             if (!personFeatures.empty()) {
                 std::cout << "\nTraining classifier...\n";
                 if (classifier.analyzePatterns(personFeatures)) {
-                    // Details about the classifier
-                    // Validate the model
-                    std::cout << "\nValidating classifier...\n";
-                    for (const auto& [subject, features] : personFeatures) {
-                        if (!features.empty()) {
-                            auto [predicted, confidence] = classifier.identifyPerson(
-                                features[0].first, features[0].second);
-                            std::cout << "Subject " << subject << " -> predicted as " 
-                                    << predicted << " (confidence: " << confidence << ")\n";
-                        }
+                    std::cout << "Saving model..." << std::endl;
+                    std::string modelPath = config.getPath("RESULTS_DIR") + "/gait_classifier.yml";
+                    try {
+                        classifier.saveModel(modelPath);
+                        std::cout << "Model saved successfully to: " << modelPath << std::endl;
+                    } catch (const std::exception& e) {
+                        std::cerr << "Error saving model: " << e.what() << std::endl;
                     }
-                    std::cout << "Classifier training complete.\n";
-                    classifier.saveModel(config.getPath("RESULTS_DIR") + "/gait_classifier.yml");
+                } else {
+                    std::cerr << "Failed to train classifier" << std::endl;
+                    return 1;
                 }
             }
 

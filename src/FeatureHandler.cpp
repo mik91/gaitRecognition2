@@ -15,25 +15,42 @@ std::vector<double> FeatureHandler::normalizeAndResampleFeatures(
         return std::vector<double>();
     }
 
-    // Validate input
-    for (const auto& features : frameFeatures) {
-        if (features.empty()) {
-            throw std::invalid_argument("Empty feature vector encountered");
-        }
-        if (features.size() != frameFeatures[0].size()) {
-            throw std::invalid_argument("Inconsistent feature vector sizes");
+    // Don't resample, keep original feature size
+    targetLength = frameFeatures[0].size();
+    
+    // Compute mean features
+    std::vector<double> meanFeatures(targetLength, 0.0);
+    std::vector<double> stdFeatures(targetLength, 0.0);
+    
+    // First pass: compute means
+    for (const auto& frame : frameFeatures) {
+        for (size_t i = 0; i < targetLength; i++) {
+            meanFeatures[i] += frame[i];
         }
     }
-
-    // First compute statistics across frames
-    std::vector<double> stats = computeStatistics(frameFeatures);
     
-    // If the stats vector length doesn't match target, interpolate
-    if (stats.size() != targetLength) {
-        return interpolateFeatures(stats, targetLength);
+    for (auto& val : meanFeatures) {
+        val /= frameFeatures.size();
     }
     
-    return stats;
+    // Second pass: compute std dev
+    for (const auto& frame : frameFeatures) {
+        for (size_t i = 0; i < targetLength; i++) {
+            double diff = frame[i] - meanFeatures[i];
+            stdFeatures[i] += diff * diff;
+        }
+    }
+    
+    // Combine features
+    std::vector<double> combined;
+    combined.reserve(targetLength * 2);
+    
+    for (size_t i = 0; i < targetLength; i++) {
+        combined.push_back(meanFeatures[i]);
+        combined.push_back(std::sqrt(stdFeatures[i] / frameFeatures.size()));
+    }
+    
+    return combined;
 }
 
 std::vector<double> FeatureHandler::interpolateFeatures(
