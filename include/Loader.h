@@ -37,7 +37,8 @@ public:
     // Getters
     const std::vector<std::string>& getSubjectIds() const { return subjectIds_; }
     const std::vector<std::string>& getConditions() const { return conditions_; }
-    std::map<std::string, std::vector<cv::Mat>> Loader::loadAllSubjects(bool includeAllConditions);
+    std::map<std::string, std::vector<cv::Mat>> loadAllSubjects(bool includeAllConditions);
+    int getMaxSequenceNumber(const std::string& condition) const;
 private:
     // Helper methods
     bool validateCondition(const std::string& condition);
@@ -45,7 +46,6 @@ private:
                                const std::string& condition,
                                int sequenceNumber);
     std::string formatNumber(int number, int width) const;
-    int Loader::getMaxSequenceNumber(const std::string& condition) const;
 
     // Parallel processing helpers
     std::pair<std::vector<cv::Mat>, std::vector<std::string>> loadFramesParallel(

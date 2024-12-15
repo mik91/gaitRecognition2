@@ -9,22 +9,22 @@ namespace visualization {
 bool initializeWindows() {
     try {
         // Create windows with specific properties
-        cv::namedWindow("Original Frame", cv::WINDOW_NORMAL | cv::WINDOW_KEEPRATIO);
-        cv::namedWindow("Sobel Edges", cv::WINDOW_NORMAL | cv::WINDOW_KEEPRATIO);
-        cv::namedWindow("Symmetry Map", cv::WINDOW_NORMAL | cv::WINDOW_KEEPRATIO);
-        cv::namedWindow("Features", cv::WINDOW_NORMAL | cv::WINDOW_KEEPRATIO);
+        cv::namedWindow("Original Frame", cv::WINDOW_NORMAL);
+        cv::namedWindow("Sobel Edges", cv::WINDOW_NORMAL);
+        cv::namedWindow("Symmetry Map", cv::WINDOW_NORMAL);
+        cv::namedWindow("Features", cv::WINDOW_NORMAL);
 
-        // Set initial window sizes
-        cv::resizeWindow("Original Frame", 640, 480);
-        cv::resizeWindow("Sobel Edges", 640, 480);
-        cv::resizeWindow("Symmetry Map", 640, 480);
-        cv::resizeWindow("Features", 800, 400);
+        // Set larger window sizes with better aspect ratios
+        cv::resizeWindow("Original Frame", 400, 800);
+        cv::resizeWindow("Sobel Edges", 400, 800);
+        cv::resizeWindow("Symmetry Map", 400, 800);
+        cv::resizeWindow("Features", 1500, 300);  // Wider and shorter for better bar graph view
 
-        // Arrange windows
+        // Position windows
         cv::moveWindow("Original Frame", 0, 0);
-        cv::moveWindow("Sobel Edges", 650, 0);
-        cv::moveWindow("Symmetry Map", 1300, 0);
-        cv::moveWindow("Features", 650, 500);
+        cv::moveWindow("Sobel Edges", 420, 0);
+        cv::moveWindow("Symmetry Map", 840, 0);
+        cv::moveWindow("Features", 0, 820);
 
         return true;
     } catch (const cv::Exception& e) {
@@ -69,6 +69,12 @@ bool displayResults(const cv::Mat& originalFrame, const cv::Mat& symmetryMap,
         cv::Mat symmetryVis = visualizeSymmetryMap(symmetryMap);
         if (!symmetryVis.empty()) {
             cv::imshow("Symmetry Map", symmetryVis);
+        }
+
+        // Visualize and display gait features
+        cv::Mat featuresVis = visualizeGaitFeatures(features);
+        if (!featuresVis.empty()) {
+            cv::imshow("Features", featuresVis);
         }
 
         // Process UI events and wait for key
@@ -136,70 +142,120 @@ cv::Mat visualizeSymmetryMap(const cv::Mat& symmetryMap) {
 
 cv::Mat visualizeGaitFeatures(const std::vector<double>& features) {
     if (features.empty()) {
-        std::cerr << "No features to visualize" << std::endl;
         return cv::Mat();
     }
 
-    // Get current window size - if window doesn't exist, use default size
-    cv::Size windowSize;
-    try {
-        windowSize = cv::getWindowImageRect("Features").size();
-    } catch (...) {
-        windowSize = cv::Size(800, 400);
-    }
-
-    // Create visualization with current window dimensions
-    cv::Mat visualization = cv::Mat::zeros(windowSize, CV_8UC3);
+    // Adjusted dimensions for better visualization
+    const int height = 300;
+    const int width = 1500;
+    cv::Mat visualization = cv::Mat::zeros(height, width, CV_8UC3);
     visualization.setTo(cv::Scalar(255, 255, 255)); // White background
 
-    // Draw grid lines efficiently using line arrays
-    std::vector<cv::Point> horizontalLines;
+    // Draw grid lines
     for (int i = 0; i <= 10; i++) {
-        int y = static_cast<int>(i * windowSize.height / 10);
-        horizontalLines.push_back(cv::Point(0, y));
-        horizontalLines.push_back(cv::Point(windowSize.width, y));
+        int y = 40 + i * (height - 80) / 10;
+        cv::line(visualization, cv::Point(80, y), 
+                 cv::Point(width-20, y), 
+                 cv::Scalar(240, 240, 240), 1);
     }
-    cv::polylines(visualization, horizontalLines, false, cv::Scalar(200, 200, 200), 1);
 
-    // Add legend text once
-    cv::putText(visualization, "Regional", cv::Point(10, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0));
-    cv::putText(visualization, "Temporal", cv::Point(10, 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0));
-    cv::putText(visualization, "Fourier", cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255));
-
-    // Calculate feature statistics once
+    // Normalize feature values
     double minVal = *std::min_element(features.begin(), features.end());
     double maxVal = *std::max_element(features.begin(), features.end());
-    double range = (std::abs(maxVal - minVal) < 1e-10) ? 1.0 : maxVal - minVal;
+    double range = maxVal - minVal;
+    if (range < 1e-10) range = 1.0;
 
-    // Pre-calculate bar dimensions
-    int barWidth = windowSize.width / features.size();
-    
-    // Create arrays for batch rectangle drawing
-    std::vector<cv::Rect> bars;
-    std::vector<cv::Scalar> colors;
-    std::vector<cv::Rect> borders;
+    // Calculate bar width
+    int numBars = features.size();
+    int barWidth = (width - 100) / numBars;
+    int gap = 1; // Reduced gap for more bars
 
-    // Prepare rectangles and colors
+    // Draw feature bars
     for (size_t i = 0; i < features.size(); i++) {
         double normalizedValue = (features[i] - minVal) / range;
-        int barHeight = static_cast<int>(normalizedValue * windowSize.height);
+        int barHeight = static_cast<int>(normalizedValue * (height - 100));
         
-        cv::Rect bar(i * barWidth, windowSize.height - barHeight, 
-                    barWidth - 1, barHeight);
-        bars.push_back(bar);
+        // Position each bar
+        int x = 80 + i * barWidth;
+        int y = height - 60 - barHeight;
         
-        // Determine color based on feature type
-        cv::Scalar color = (i < 4) ? cv::Scalar(255, 0, 0) : 
-                          (i == 4) ? cv::Scalar(0, 255, 0) : 
-                                    cv::Scalar(0, 0, 255);
-        colors.push_back(color);
-        borders.push_back(bar);
+        // Determine feature type and color - fixed BGR colors
+        cv::Scalar color;
+        const size_t numRegionalFeatures = features.size() / 3;
+        if (i < numRegionalFeatures) {
+            color = cv::Scalar(0, 0, 255);  // Pure Red for Regional
+        } else if (i < 2 * numRegionalFeatures) {
+            color = cv::Scalar(0, 255, 0);  // Pure Green for Temporal
+        } else {
+            color = cv::Scalar(255, 0, 0);  // Pure Blue for Fourier
+        }
+        
+        // Draw filled bar
+        cv::rectangle(visualization, 
+                     cv::Point(x, y), 
+                     cv::Point(x + barWidth - gap, height - 60),
+                     color, cv::FILLED);
+                     
+        // Draw bar outline
+        cv::rectangle(visualization, 
+                     cv::Point(x, y), 
+                     cv::Point(x + barWidth - gap, height - 60),
+                     cv::Scalar(0, 0, 0), 1);
+
+        // Add value labels for significant features
+        if (normalizedValue > 0.1) {
+            std::string label = cv::format("%.2f", features[i]);
+            cv::putText(visualization, label,
+                       cv::Point(x, y - 5),
+                       cv::FONT_HERSHEY_SIMPLEX, 0.3,
+                       cv::Scalar(0, 0, 0), 1, cv::LINE_AA);
+        }
     }
 
-    // Batch draw filled rectangles
-    for (size_t i = 0; i < bars.size(); i++) {
-        cv::rectangle(visualization, bars[i], colors[i], cv::FILLED);
-        cv::rectangle(visualization, borders[i], cv::Scalar(0, 0, 0), 1);
+    // Add legend with pure RGB colors
+    // Add colored rectangles next to text
+    int legendY = 25;
+    int rectWidth = 20;
+    int rectHeight = 20;
+    
+    // Regional (Red)
+    cv::rectangle(visualization, 
+                 cv::Point(10, legendY-15), 
+                 cv::Point(10+rectWidth, legendY+5), 
+                 cv::Scalar(0, 0, 255), cv::FILLED);
+    cv::putText(visualization, "Regional", cv::Point(40, legendY), 
+                cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
+    
+    // Temporal (Green)
+    cv::rectangle(visualization, 
+                 cv::Point(150, legendY-15), 
+                 cv::Point(150+rectWidth, legendY+5), 
+                 cv::Scalar(0, 255, 0), cv::FILLED);
+    cv::putText(visualization, "Temporal", cv::Point(180, legendY), 
+                cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
+    
+    // Fourier (Blue)
+    cv::rectangle(visualization, 
+                 cv::Point(290, legendY-15), 
+                 cv::Point(290+rectWidth, legendY+5), 
+                 cv::Scalar(255, 0, 0), cv::FILLED);
+    cv::putText(visualization, "Fourier", cv::Point(320, legendY), 
+                cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 0, 0), 2);
+
+    // Draw axes
+    cv::line(visualization, cv::Point(80, height-60), 
+             cv::Point(width-20, height-60), cv::Scalar(0, 0, 0), 2);
+    cv::line(visualization, cv::Point(80, 40), 
+             cv::Point(80, height-60), cv::Scalar(0, 0, 0), 2);
+
+    // Add value scale on y-axis
+    for (int i = 0; i <= 10; i++) {
+        double value = minVal + (i * range / 10.0);
+        std::string label = cv::format("%.1f", value);
+        cv::putText(visualization, label,
+                   cv::Point(10, height - 60 - i * (height-100)/10),
+                   cv::FONT_HERSHEY_SIMPLEX, 0.4,
+                   cv::Scalar(0, 0, 0), 1, cv::LINE_AA);
     }
 
     return visualization;

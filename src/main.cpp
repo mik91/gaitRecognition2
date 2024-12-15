@@ -21,6 +21,7 @@ struct FrameProcessingResult {
 };
 
 void processSequenceParallel(
+    const std::string& subjectId,  // Add subjectId parameter
     const std::vector<cv::Mat>& frames,
     const std::vector<std::string>& filenames, 
     gait::GaitAnalyzer& analyzer,
@@ -28,10 +29,20 @@ void processSequenceParallel(
     bool showVisualization) {
     
     const size_t numThreads = std::thread::hardware_concurrency();
-    const size_t windowSize = 30;  // Process 30 frames at a time
-    const size_t windowStride = 15; // Overlap windows by 50%
+    const size_t windowSize = 30;
+    const size_t windowStride = 15;
+    const size_t visualizationInterval = 10; // Show every 5th window
     std::mutex featuresMutex;
     std::mutex visualizationMutex;
+    
+    size_t windowCount = 0;
+    
+    // Set window titles with subject ID
+    if (showVisualization) {
+        cv::setWindowTitle("Original Frame", "Original Frame - Subject " + subjectId);
+        cv::setWindowTitle("Symmetry Map", "Symmetry Map - Subject " + subjectId);
+        // cv::setWindowTitle("Features", "Features - Subject " + subjectId);
+    }
     
     // Process overlapping windows of frames
     std::vector<std::future<std::vector<FrameProcessingResult>>> futures;
@@ -64,6 +75,8 @@ void processSequenceParallel(
     // Process results as they complete
     for (auto& future : futures) {
         auto windowResults = future.get();
+        windowCount++;
+        
         if (!windowResults.empty()) {
             std::lock_guard<std::mutex> lock(featuresMutex);
             
@@ -78,17 +91,20 @@ void processSequenceParallel(
             if (!windowFeatures.empty()) {
                 std::vector<double> normalizedFeatures = 
                     gait::FeatureHandler::normalizeAndResampleFeatures(windowFeatures);
-                // Store features with the filename from first frame in window
                 sequenceFeatures.emplace_back(normalizedFeatures, windowResults[0].filename);
             }
             
-            if (showVisualization) {
+            // Show visualization periodically
+            if (showVisualization && (windowCount % visualizationInterval == 0)) {
                 std::lock_guard<std::mutex> visLock(visualizationMutex);
                 gait::visualization::displayResults(
                     windowResults[0].originalFrame,
                     windowResults[0].symmetryMap,
                     windowResults[0].features
                 );
+                
+                // Add a small delay to make visualization visible
+                std::this_thread::sleep_for(std::chrono::milliseconds(30));
             }
         }
     }
@@ -120,6 +136,20 @@ int main() {
         std::string modeChoice;
         std::getline(std::cin, modeChoice);
 
+        // Handle visualization setup
+        bool showVisualization = false;
+        if (modeChoice == "1" ) {
+            std::cout << "Show visualization? (y/n): ";
+            std::string input;
+            std::getline(std::cin, input);
+            showVisualization = (input == "y");
+
+            if (showVisualization && !gait::visualization::initializeWindows()) {
+                std::cerr << "Failed to initialize visualization windows" << std::endl;
+                return 1;
+            }
+        }
+
         if (modeChoice == "1") {
             // Training mode
             gait::Loader loader(config.getPath("DATASET_ROOT"));
@@ -144,8 +174,8 @@ int main() {
 
             for (const auto& [subjectId, data] : allSubjectData) {
                 std::vector<std::pair<std::vector<double>, std::string>> sequenceFeatures;
-                processSequenceParallel(data.frames, data.filenames, analyzer, 
-                                      sequenceFeatures, false);
+                processSequenceParallel(subjectId, data.frames, data.filenames, analyzer, 
+                                    sequenceFeatures, showVisualization);
                 
                 if (!sequenceFeatures.empty()) {
                     personFeatures[subjectId] = sequenceFeatures;
@@ -153,8 +183,8 @@ int main() {
 
                 processedSubjects++;
                 float progress = (float)processedSubjects / totalSubjects * 100;
-                std::cout << "\rProgress: " << std::fixed << std::setprecision(1) 
-                          << progress << "%" << std::flush;
+                std::cout << "\rProcessing subject " << subjectId << " - Progress: " 
+                        << std::fixed << std::setprecision(1) << progress << "%" << std::flush;
             }
             
             if (!personFeatures.empty()) {
@@ -191,18 +221,6 @@ int main() {
         }
         else {
             std::cerr << "Invalid choice\n";
-            return 1;
-        }
-
-        // Handle visualization setup
-        bool showVisualization = false;
-        std::cout << "Show visualization? (y/n): ";
-        std::string input;
-        std::getline(std::cin, input);
-        showVisualization = (input == "y");
-
-        if (showVisualization && !gait::visualization::initializeWindows()) {
-            std::cerr << "Failed to initialize visualization windows" << std::endl;
             return 1;
         }
 
