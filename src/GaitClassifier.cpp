@@ -95,30 +95,38 @@ std::pair<std::string, double> GaitClassifier::identifyPerson(
         return {"unknown", 0.0};
     }
 
-    // Add size validation
-    if (testSequence.empty() || featureMeans_.empty()) {
-        std::cerr << "Invalid feature vectors" << std::endl;
+    // Validate input sequence
+    if (testSequence.empty()) {
+        std::cerr << "Empty test sequence provided" << std::endl;
         return {"unknown", 0.0};
     }
 
+    // Validate feature dimensions
     if (testSequence.size() != featureMeans_.size()) {
         std::cerr << "Feature size mismatch! Expected " << featureMeans_.size() 
                   << " but got " << testSequence.size() << std::endl;
         return {"unknown", 0.0};
     }
 
+    // Validate training data
+    if (trainingSequences_.empty()) {
+        std::cerr << "No training sequences available" << std::endl;
+        return {"unknown", 0.0};
+    }
+
     // Set maximum computation time
     const auto startTime = std::chrono::steady_clock::now();
-    const auto timeoutDuration = std::chrono::seconds(30);  // 30 second timeout
+    const auto timeoutDuration = std::chrono::seconds(30);
 
     try {
         std::string testCondition = extractCondition(testFilename);
         auto normalizedTest = normalizeFeatures(testSequence);
         
+        // Pre-allocate vector with proper size
         std::vector<std::pair<double, SequenceInfo>> allDistances;
         allDistances.reserve(trainingSequences_.size());
 
-        // Calculate distances with timeout check
+        // Calculate distances
         for (const auto& trainSeq : trainingSequences_) {
             // Check timeout
             if (std::chrono::steady_clock::now() - startTime > timeoutDuration) {
@@ -128,36 +136,52 @@ std::pair<std::string, double> GaitClassifier::identifyPerson(
 
             auto normalizedTrain = normalizeFeatures(trainSeq.features);
             double distance = computeEuclideanDistance(normalizedTest, normalizedTrain);
-            allDistances.emplace_back(distance, trainSeq);
-        }
-
-        // Sort with timeout check
-        if (std::chrono::steady_clock::now() - startTime > timeoutDuration) {
-            std::cerr << "Classification timed out during sorting" << std::endl;
-            return {"unknown", 0.0};
-        }
-
-        std::partial_sort(allDistances.begin(), 
-                         allDistances.begin() + params_.kNeighbors,
-                         allDistances.end());
-
-        // Get k nearest neighbors
-        std::string bestMatch = "unknown";
-        std::map<std::string, int> votes;
-        
-        for (int i = 0; i < params_.kNeighbors && i < allDistances.size(); i++) {
-            votes[allDistances[i].second.label]++;
-            if (votes[allDistances[i].second.label] > votes[bestMatch]) {
-                bestMatch = allDistances[i].second.label;
+            
+            // Only add valid distances
+            if (!std::isnan(distance) && !std::isinf(distance)) {
+                allDistances.emplace_back(distance, trainSeq);
             }
         }
 
-        double confidence = computeConditionAwareConfidence(testCondition, allDistances, bestMatch);
-
-        if (confidence == 0.0) {
+        // Validate we have enough distances
+        if (allDistances.empty()) {
+            std::cerr << "No valid distances computed" << std::endl;
             return {"unknown", 0.0};
         }
+
+        if (allDistances.size() < params_.kNeighbors) {
+            std::cerr << "Not enough valid sequences for k-NN comparison" << std::endl;
+            return {"unknown", 0.0};
+        }
+
+        // Sort distances
+        std::sort(allDistances.begin(), allDistances.end(),
+                 [](const auto& a, const auto& b) { return a.first < b.first; });
+
+        // Get k nearest neighbors
+        std::map<std::string, int> votes;
+        std::string bestMatch = "unknown";
+        int maxVotes = 0;
         
+        for (size_t i = 0; i < params_.kNeighbors && i < allDistances.size(); i++) {
+            const auto& [dist, info] = allDistances[i];
+            votes[info.label]++;
+            
+            if (votes[info.label] > maxVotes) {
+                maxVotes = votes[info.label];
+                bestMatch = info.label;
+            }
+        }
+
+        // Compute confidence
+        double confidence = computeConditionAwareConfidence(
+            testCondition, 
+            std::vector<std::pair<double, SequenceInfo>>(
+                allDistances.begin(),
+                allDistances.begin() + std::min(allDistances.size(), 
+                                              static_cast<size_t>(params_.kNeighbors))),
+            bestMatch);
+
         return {bestMatch, confidence};
 
     } catch (const std::exception& e) {
@@ -495,11 +519,21 @@ void GaitClassifier::saveModel(const std::string& filename) const {
     fs << "feature_stddevs" << featureStdDevs_;
     fs << "covariance_matrix" << covarianceMatrix_;
     
-    // Save training data
-    fs << "num_samples" << (int)trainingData_.size();
+    // Save training sequences info
+    fs << "num_sequences" << (int)trainingSequences_.size();
     fs << "feature_size" << (int)featureMeans_.size();
     
-    // Save training data and labels
+    // Save training sequences
+    for (size_t i = 0; i < trainingSequences_.size(); i++) {
+        const auto& seq = trainingSequences_[i];
+        std::string prefix = "sequence_" + std::to_string(i) + "_";
+        fs << prefix + "label" << seq.label;
+        fs << prefix + "condition" << seq.condition;
+        fs << prefix + "features" << seq.features;
+    }
+    
+    // For backwards compatibility, also save training data and labels
+    fs << "num_samples" << (int)trainingData_.size();
     for (size_t i = 0; i < trainingData_.size(); i++) {
         fs << "sample_" + std::to_string(i) << trainingData_[i];
         fs << "label_" + std::to_string(i) << trainingLabels_[i];
@@ -518,6 +552,11 @@ bool GaitClassifier::loadModel(const std::string& filename) {
     }
     
     try {
+        // Clear existing data
+        trainingSequences_.clear();
+        trainingData_.clear();
+        trainingLabels_.clear();
+        
         // Load parameters
         fs["min_confidence"] >> params_.minConfidenceThreshold;
         fs["k_neighbors"] >> params_.kNeighbors;
@@ -530,40 +569,68 @@ bool GaitClassifier::loadModel(const std::string& filename) {
         fs["feature_stddevs"] >> featureStdDevs_;
         fs["covariance_matrix"] >> covarianceMatrix_;
         
-        int numSamples, featureSize;
-        fs["num_samples"] >> numSamples;
-        fs["feature_size"] >> featureSize;
+        // Load training sequences
+        int numSequences = 0;
+        fs["num_sequences"] >> numSequences;
         
-        std::cout << "Model info:" << std::endl;
-        std::cout << "Number of training samples: " << numSamples << std::endl;
-        std::cout << "Feature dimension: " << featureSize << std::endl;
-        
-        trainingData_.clear();
-        trainingLabels_.clear();
-        
-        // Load samples and labels
-        for (int i = 0; i < numSamples; i++) {
-            std::vector<double> sample;
-            std::string label;
+        if (numSequences > 0) {
+            trainingSequences_.reserve(numSequences);
             
-            fs["sample_" + std::to_string(i)] >> sample;
-            fs["label_" + std::to_string(i)] >> label;
-            
-            if (sample.size() != featureSize) {
-                std::cerr << "Invalid feature size in sample " << i << std::endl;
-                return false;
+            for (int i = 0; i < numSequences; i++) {
+                std::string prefix = "sequence_" + std::to_string(i) + "_";
+                SequenceInfo seq;
+                
+                fs[prefix + "label"] >> seq.label;
+                fs[prefix + "condition"] >> seq.condition;
+                fs[prefix + "features"] >> seq.features;
+                
+                if (!seq.label.empty() && !seq.features.empty()) {
+                    trainingSequences_.push_back(std::move(seq));
+                }
             }
+        }
+        
+        // Load legacy training data
+        int numSamples = 0;
+        fs["num_samples"] >> numSamples;
+        
+        if (numSamples > 0) {
+            trainingData_.reserve(numSamples);
+            trainingLabels_.reserve(numSamples);
             
-            trainingData_.push_back(sample);
-            trainingLabels_.push_back(label);
+            for (int i = 0; i < numSamples; i++) {
+                std::vector<double> sample;
+                std::string label;
+                
+                fs["sample_" + std::to_string(i)] >> sample;
+                fs["label_" + std::to_string(i)] >> label;
+                
+                if (!sample.empty() && !label.empty()) {
+                    trainingData_.push_back(std::move(sample));
+                    trainingLabels_.push_back(std::move(label));
+                }
+            }
+        }
+        
+        // Validate loaded data
+        if (trainingSequences_.empty()) {
+            std::cerr << "Warning: No training sequences loaded" << std::endl;
+            return false;
         }
         
         isModelTrained_ = true;
         std::cout << "Model loaded successfully" << std::endl;
+        std::cout << "Loaded " << trainingSequences_.size() << " sequences" << std::endl;
+        std::cout << "Feature dimension: " << featureMeans_.size() << std::endl;
         return true;
-    }
-    catch (const cv::Exception& e) {
+        
+    } catch (const cv::Exception& e) {
+        std::cerr << "OpenCV error loading model: " << e.what() << std::endl;
+        isModelTrained_ = false;
+        return false;
+    } catch (const std::exception& e) {
         std::cerr << "Error loading model: " << e.what() << std::endl;
+        isModelTrained_ = false;
         return false;
     }
 }
