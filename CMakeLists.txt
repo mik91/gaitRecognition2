@@ -21,7 +21,6 @@ add_executable(
     src/GaitVisualization.cpp
     src/GaitAnalyzer.cpp
     src/GaitClassifier.cpp
-    src/GaitUtils.cpp
     src/Loader.cpp
     src/main.cpp
 )

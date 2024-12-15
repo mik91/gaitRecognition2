@@ -5,7 +5,6 @@
 #include "PersonIdentifier.h"
 #include "PathConfig.h"
 #include "BatchProcessor.h"
-#include "GaitUtils.h"
 #include "FeatureHandler.h"
 #include <iostream>
 #include <chrono>
@@ -13,7 +12,7 @@
 #include <iomanip>
 #include <numeric>
 
-// Helper struct to hold frame processing results
+// Frame processing results
 struct FrameProcessingResult {
     std::vector<double> features;
     std::string filename;

@@ -3,7 +3,6 @@
 
 #include "GaitAnalyzer.h"
 #include "GaitClassifier.h"
-#include "GaitUtils.h"
 #include <vector>
 #include <string>
 #include <filesystem>
