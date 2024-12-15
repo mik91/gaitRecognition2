@@ -97,7 +97,6 @@ void processSequenceParallel(
 
 int main() {
     try {
-        // Initialize components with timing measurements
         auto startTime = std::chrono::steady_clock::now();
         
         // Initialize configuration
@@ -107,25 +106,96 @@ int main() {
             return 1;
         }
 
-        // Initialize components with enhanced parameters
-        gait::Loader loader(config.getPath("DATASET_ROOT"));
+        // Initialize components
         gait::SymmetryParams analyzerParams(27.0, 90.0, 0.1);
         gait::GaitAnalyzer analyzer(analyzerParams);
-
-        // Initialize classifier with optimized parameters
-        gait::ClassifierParams classifierParams(
-            0.65,   // minConfidenceThreshold - increased from 0.65
-            5,      // kNeighbors - increased from 5
-            100.0,   // maxValidDistance - decreased from 100.0
-            0.5,    // temporalWeight
-            0.5     // spatialWeight - increased weight of spatial features
-        );
+        gait::ClassifierParams classifierParams(0.65, 5, 100.0, 0.5, 0.5);
         gait::GaitClassifier classifier(classifierParams);
+
+        // Ask user whether to train new model or load existing one
+        std::cout << "Choose operation mode:\n"
+                  << "1. Train new model\n"
+                  << "2. Load existing model\n"
+                  << "Enter choice (1-2): ";
         
-        auto initTime = std::chrono::steady_clock::now();
-        std::cout << "Initialization time: " 
-                  << std::chrono::duration_cast<std::chrono::milliseconds>(
-                         initTime - startTime).count() << "ms\n";
+        std::string modeChoice;
+        std::getline(std::cin, modeChoice);
+
+        if (modeChoice == "1") {
+            // Training mode
+            gait::Loader loader(config.getPath("DATASET_ROOT"));
+            
+            std::cout << "\nLoading subject data...\n";
+            auto loadStart = std::chrono::steady_clock::now();
+            
+            auto allSubjectData = loader.loadAllSubjectsWithFilenames(true);
+            
+            auto loadEnd = std::chrono::steady_clock::now();
+            std::cout << "Data loading time: " 
+                      << std::chrono::duration_cast<std::chrono::seconds>(
+                             loadEnd - loadStart).count() << "s\n";
+
+            // Process and train as before...
+            std::map<std::string, std::vector<std::pair<std::vector<double>, 
+                    std::string>>> personFeatures;
+            size_t totalSubjects = allSubjectData.size();
+            size_t processedSubjects = 0;
+
+            loadStart = std::chrono::steady_clock::now();
+
+            for (const auto& [subjectId, data] : allSubjectData) {
+                std::vector<std::pair<std::vector<double>, std::string>> sequenceFeatures;
+                processSequenceParallel(data.frames, data.filenames, analyzer, 
+                                      sequenceFeatures, false);
+                
+                if (!sequenceFeatures.empty()) {
+                    personFeatures[subjectId] = sequenceFeatures;
+                }
+
+                processedSubjects++;
+                float progress = (float)processedSubjects / totalSubjects * 100;
+                std::cout << "\rProgress: " << std::fixed << std::setprecision(1) 
+                          << progress << "%" << std::flush;
+            }
+            
+            if (!personFeatures.empty()) {
+                std::cout << "\nTraining classifier...\n";
+                if (classifier.analyzePatterns(personFeatures)) {
+                    // Details about the classifier
+                    // Validate the model
+                    std::cout << "\nValidating classifier...\n";
+                    for (const auto& [subject, features] : personFeatures) {
+                        if (!features.empty()) {
+                            auto [predicted, confidence] = classifier.identifyPerson(
+                                features[0].first, features[0].second);
+                            std::cout << "Subject " << subject << " -> predicted as " 
+                                    << predicted << " (confidence: " << confidence << ")\n";
+                        }
+                    }
+                    std::cout << "Classifier training complete.\n";
+                    classifier.saveModel(config.getPath("RESULTS_DIR") + "/gait_classifier.yml");
+                }
+            }
+
+            loadEnd = std::chrono::steady_clock::now();
+
+            std::cout << "Training time: " 
+                      << std::chrono::duration_cast<std::chrono::seconds>(
+                             loadEnd - loadStart).count() << "s\n";
+        }
+        else if (modeChoice == "2") {
+            // Load existing model
+            std::string modelPath = config.getPath("RESULTS_DIR") + "/gait_classifier.yml";
+            if (!classifier.loadModel(modelPath)) {
+                std::cerr << "Failed to load model from " << modelPath << std::endl;
+                return 1;
+            }
+            std::cout << "Model loaded successfully.\n";
+        }
+        else {
+            std::cerr << "Invalid choice\n";
+            return 1;
+        }
 
         // Handle visualization setup
         bool showVisualization = false;
@@ -139,74 +209,7 @@ int main() {
             return 1;
         }
 
-        // Load and process all subjects
-        std::cout << "\nLoading subject data...\n";
-        auto loadStart = std::chrono::steady_clock::now();
-        
-        // Updated data structure to store features with filenames
-        std::map<std::string, std::vector<std::pair<std::vector<double>, std::string>>> personFeatures;
-        auto allSubjectData = loader.loadAllSubjectsWithFilenames(true);
-        
-        auto loadEnd = std::chrono::steady_clock::now();
-        std::cout << "Data loading time: " 
-                  << std::chrono::duration_cast<std::chrono::seconds>(
-                         loadEnd - loadStart).count() << "s\n";
-
-        // Process subjects with progress tracking
-        std::cout << "\nProcessing subjects...\n";
-        size_t totalSubjects = allSubjectData.size();
-        size_t processedSubjects = 0;
-
-        for (const auto& [subjectId, data] : allSubjectData) {
-            std::vector<std::pair<std::vector<double>, std::string>> sequenceFeatures;
-            processSequenceParallel(data.frames, data.filenames, analyzer, sequenceFeatures, showVisualization);
-            
-            if (!sequenceFeatures.empty()) {
-                personFeatures[subjectId] = sequenceFeatures;
-            }
-
-            // Update progress
-            processedSubjects++;
-            float progress = (float)processedSubjects / totalSubjects * 100;
-            std::cout << "\rProgress: " << std::fixed << std::setprecision(1) 
-                      << progress << "%" << std::flush;
-        }
-        std::cout << "\nProcessing complete!\n";
-
-        // Train classifier
-        if (!personFeatures.empty()) {
-            std::cout << "\nTraining classifier...\n";
-            if (classifier.analyzePatterns(personFeatures)) {
-                std::cout << "Classifier training complete.\n";
-                
-                // Test classification on training data
-                for (const auto& [person, features_and_filenames] : personFeatures) {
-                    if (!features_and_filenames.empty()) {
-                        const auto& [features, filename] = features_and_filenames[0];
-                        
-                        auto [predictedPerson, confidence] = 
-                            classifier.identifyPerson(features, filename);
-                            
-                        std::cout << "Person " << person 
-                                << " (file: " << filename << ")"
-                                << " identified as: " << predictedPerson 
-                                << " (confidence: " << std::fixed 
-                                << std::setprecision(4) << confidence << ")\n";
-                    }
-                }
-            }
-        }
-
-        // Interactive mode remains the same...
-
-        if (showVisualization) {
-            gait::visualization::cleanupWindows();
-        }
-
-        auto endTime = std::chrono::steady_clock::now();
-        std::cout << "\nTotal execution time: " 
-                  << std::chrono::duration_cast<std::chrono::seconds>(
-                         endTime - startTime).count() << "s\n";
+        // Interactive mode
         bool continueRunning = true;
         while (continueRunning) {
             std::cout << "\nGait Analysis Options:\n"
@@ -225,7 +228,8 @@ int main() {
 
                 gait::PersonIdentifier identifier(analyzer, classifier);
                 try {
-                    auto [personId, confidence] = identifier.identifyFromImage(imagePath, showVisualization);
+                    auto [personId, confidence] = identifier.identifyFromImage(
+                        imagePath, showVisualization);
                     std::cout << "\nAnalysis Results:\n"
                             << "Identified Person: " << personId << "\n"
                             << "Confidence: " << std::fixed << std::setprecision(4) 
@@ -248,26 +252,6 @@ int main() {
                     if (results.empty()) {
                         std::cout << "No valid images found in directory.\n";
                     }
-                    else {
-                        std::cout << "\nProcessed " << results.size() << " files.\n";
-                        
-                        // Group results by predicted person
-                        std::map<std::string, std::vector<double>> confidences;
-                        for (const auto& result : results) {
-                            confidences[result.predictedPerson].push_back(result.confidence);
-                        }
-
-                        // Print summary for each person
-                        for (const auto& [person, confs] : confidences) {
-                            double avgConf = std::accumulate(confs.begin(), confs.end(), 0.0) / confs.size();
-                            double percentage = (100.0 * confs.size()) / results.size();
-                            
-                            std::cout << person << ": " 
-                                    << confs.size() << " images (" 
-                                    << std::fixed << std::setprecision(1) << percentage << "%) "
-                                    << "avg conf: " << std::setprecision(4) << avgConf << "\n";
-                        }
-                    }
                 }
                 catch (const std::exception& e) {
                     std::cerr << "Error processing folder: " << e.what() << std::endl;
@@ -280,9 +264,17 @@ int main() {
             else {
                 std::cout << "Invalid choice. Please try again.\n";
             }
-
-            std::cin.clear();
         }
+
+        if (showVisualization) {
+            gait::visualization::cleanupWindows();
+        }
+
+        auto endTime = std::chrono::steady_clock::now();
+        std::cout << "\nTotal execution time: " 
+                  << std::chrono::duration_cast<std::chrono::seconds>(
+                         endTime - startTime).count() << "s\n";
+
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;

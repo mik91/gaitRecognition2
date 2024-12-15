@@ -83,6 +83,9 @@ std::vector<BatchProcessor::ProcessingResult> BatchProcessor::processDirectory(
         return results;
     }
 
+    // Assuming config is an instance of a class that provides the getPath method
+    auto& config = gait::PathConfig::getInstance();
+
     try {
         // Accumulate features for the whole sequence
         std::vector<double> accumulatedFeatures = FeatureHandler::normalizeAndResampleFeatures(allFeatures);  
@@ -114,7 +117,7 @@ std::vector<BatchProcessor::ProcessingResult> BatchProcessor::processDirectory(
 
     // Save results and write summary
     if (!results.empty()) {
-        std::filesystem::path outputPath = std::filesystem::path(inputDir) / "batch_results.csv";
+        std::filesystem::path outputPath = config.getPath("RESULTS_DIR") + "/batch_results.txt";
         std::ofstream outputFile(outputPath);
         if (outputFile.is_open()) {
             writeSummaryReport(results, outputFile);

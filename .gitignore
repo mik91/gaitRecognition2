@@ -37,3 +37,7 @@ build/
 data/
 linux-gaitanalyzer/
 results/
+src/debug.txt
+resultsgait_classifier.yml
+copy/
+src/debug.txt
