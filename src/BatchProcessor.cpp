@@ -9,10 +9,10 @@
 #include <algorithm>
 #include <iostream>
 #include <ctime>
+#include <regex>
 
 namespace gait {
 
-// In BatchProcessor.cpp
 std::vector<BatchProcessor::ProcessingResult> BatchProcessor::processDirectory(
     const std::string& inputDir,
     bool visualize,
@@ -22,7 +22,6 @@ std::vector<BatchProcessor::ProcessingResult> BatchProcessor::processDirectory(
     std::vector<cv::Mat> frames;
     std::vector<std::string> filenames;
 
-    // Loading files phase
     std::cout << "\nCollecting files..." << std::endl;
     try {
         for (const auto& entry : std::filesystem::directory_iterator(inputDir)) {
@@ -47,7 +46,6 @@ std::vector<BatchProcessor::ProcessingResult> BatchProcessor::processDirectory(
         return results;
     }
 
-    // Processing phase
     std::vector<std::vector<double>> allFeatures;
     allFeatures.reserve(frames.size());
 
@@ -68,7 +66,6 @@ std::vector<BatchProcessor::ProcessingResult> BatchProcessor::processDirectory(
     }
     std::cout << "\nProcessed " << allFeatures.size() << " frames successfully" << std::endl;
 
-    // Classification phase
     if (!allFeatures.empty()) {
         std::cout << "\nGenerating sequence features..." << std::endl;
         std::vector<double> accumulatedFeatures = 
@@ -103,7 +100,6 @@ std::vector<BatchProcessor::ProcessingResult> BatchProcessor::processDirectory(
         }
         std::cout << "Classification time: " << classifyDuration << " seconds" << std::endl;
         
-        // Create results
         for (const auto& filename : filenames) {
             ProcessingResult result;
             result.filename = filename;
@@ -113,7 +109,6 @@ std::vector<BatchProcessor::ProcessingResult> BatchProcessor::processDirectory(
             results.push_back(result);
         }
 
-        // Immediately write results
         auto& config = PathConfig::getInstance();
         std::filesystem::path outputPath = config.getPath("RESULTS_DIR") + "/batch_results.txt";
         std::ofstream outputFile(outputPath);
@@ -124,7 +119,6 @@ std::vector<BatchProcessor::ProcessingResult> BatchProcessor::processDirectory(
             std::cerr << "Failed to save results to file" << std::endl;
         }
         
-        // Print summary
         std::cout << "\nSummary:" << std::endl;
         std::cout << "--------" << std::endl;
         std::cout << "Total images processed: " << results.size() << std::endl;
@@ -143,7 +137,6 @@ void BatchProcessor::summarizeResults(const std::vector<ProcessingResult>& resul
         return;
     }
 
-    // Calculate statistics
     double totalConfidence = 0.0;
     std::map<std::string, int> personCounts;
     
@@ -152,7 +145,6 @@ void BatchProcessor::summarizeResults(const std::vector<ProcessingResult>& resul
         personCounts[result.predictedPerson]++;
     }
 
-    // Calculate percentages and gather stats
     std::vector<std::pair<std::string, std::pair<int, double>>> predictions;
     for (const auto& [person, count] : personCounts) {
         double percentage = (100.0 * count) / results.size();
@@ -170,13 +162,11 @@ void BatchProcessor::summarizeResults(const std::vector<ProcessingResult>& resul
         predictions.push_back({person, {count, avgConfidence}});
     }
 
-    // Sort predictions by count
     std::sort(predictions.begin(), predictions.end(),
               [](const auto& a, const auto& b) { 
                   return a.second.first > b.second.first; 
               });
 
-    // Print detailed summary
     std::cout << "\nDetailed Analysis Results:" << std::endl;
     std::cout << "=========================" << std::endl;
     std::cout << "Total frames processed: " << results.size() << std::endl;
@@ -196,7 +186,6 @@ void BatchProcessor::summarizeResults(const std::vector<ProcessingResult>& resul
         }
     }
 
-    // Print final conclusion
     std::cout << "\nFinal conclusion: ";
     if (!predictions.empty() && predictions[0].second.second > 0.0) {
         double mainPredictionPercentage = (100.0 * predictions[0].second.first) / results.size();
@@ -217,74 +206,103 @@ void BatchProcessor::writeSummaryReport(
     const std::vector<ProcessingResult>& results, 
     std::ofstream& file) {
     
-    if (!file.is_open()) {
-        std::cerr << "Could not write summary report - file not open" << std::endl;
+    if (!file.is_open() || results.empty()) {
+        std::cerr << "Cannot write report - invalid file or empty results" << std::endl;
         return;
     }
 
-    // Get current time
-    std::time_t currentTime = std::time(nullptr);
-    
-    // Write header
-    file << "Batch Processing Summary Report\n"
-         << "==============================\n"
-         << "Generated: " << std::put_time(std::localtime(&currentTime), 
-                                         "%Y-%m-%d %H:%M:%S") << "\n\n";
+    try {
+        struct Stats {
+            double totalConfidence = 0.0;
+            double totalTime = 0.0;
+            double minConfidence = 1.0;
+            double maxConfidence = 0.0;
+            double minTime = std::numeric_limits<double>::max();
+            double maxTime = 0.0;
+            int highConfCount = 0;    // >0.85
+            int modConfCount = 0;     // 0.70-0.85
+            int lowConfCount = 0;     // <0.70
+            std::map<std::string, int> predictionCounts;
+        } stats;
 
-    if (results.empty()) {
-        file << "No images were processed.\n";
-        return;
+        for (const auto& result : results) {
+            stats.totalConfidence += result.confidence;
+            stats.totalTime += result.processingTime;
+            stats.minConfidence = std::min(stats.minConfidence, result.confidence);
+            stats.maxConfidence = std::max(stats.maxConfidence, result.confidence);
+            stats.minTime = std::min(stats.minTime, result.processingTime);
+            stats.maxTime = std::max(stats.maxTime, result.processingTime);
+            stats.predictionCounts[result.predictedPerson]++;
+
+            if (result.confidence > 0.85) stats.highConfCount++;
+            else if (result.confidence > 0.70) stats.modConfCount++;
+            else stats.lowConfCount++;
+        }
+
+        auto primaryPrediction = std::max_element(
+            stats.predictionCounts.begin(), 
+            stats.predictionCounts.end(),
+            [](const auto& a, const auto& b) { return a.second < b.second; }
+        );
+
+        double avgConfidence = stats.totalConfidence / results.size();
+        double avgTime = stats.totalTime / results.size();
+
+        auto now = std::chrono::system_clock::now();
+        std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+        file << "Batch Processing Summary Report\n"
+             << "==============================\n"
+             << "Generated: " << std::put_time(std::localtime(&now_time), 
+                                             "%Y-%m-%d %H:%M:%S") << "\n\n";
+
+        file << "Overall Statistics\n"
+             << "-----------------\n"
+             << "Total images processed: " << results.size() << "\n"
+             << "Sequence length: " << results.size() << " frames\n"
+             << "Processing duration: " << stats.totalTime << " seconds\n\n";
+
+        file << "Classification Results\n"
+             << "--------------------\n"
+             << "Primary prediction: " << primaryPrediction->first << "\n"
+             << "Confidence level: " << std::fixed << std::setprecision(4) << avgConfidence << "\n"
+             << "Status: " << (avgConfidence > 0.85 ? "Strong match" : 
+                             avgConfidence > 0.70 ? "Moderate match" : "Weak match") << "\n\n";
+
+        file << "Prediction Details\n"
+             << "----------------\n"
+             << "Confidence distribution:\n"
+             << "- High confidence matches (>0.85): " << stats.highConfCount << "\n"
+             << "- Moderate confidence matches (0.70-0.85): " << stats.modConfCount << "\n"
+             << "- Low confidence matches (<0.70): " << stats.lowConfCount << "\n\n";
+
+        file << "Performance Metrics\n"
+             << "-----------------\n"
+             << "Average processing time per frame: " << std::fixed << std::setprecision(2) 
+             << avgTime << " ms\n"
+             << "Processing time range: " << stats.minTime << " - " << stats.maxTime << " ms\n\n";
+
+        if (!results.empty()) {
+            file << "Sequence Analysis\n"
+                 << "---------------\n"
+                 << "Start frame: " << results.front().filename << "\n"
+                 << "End frame: " << results.back().filename << "\n";
+            
+            std::string condition = extractConditionFromFilename(results.front().filename);
+            file << "Sequence condition: " << condition << "\n\n";
+        }
     }
-
-    // Calculate statistics
-    double totalConfidence = 0.0;
-    double totalTime = 0.0;
-    std::map<std::string, int> personCounts;
-    double minConfidence = 1.0;
-    double maxConfidence = 0.0;
-    double minTime = std::numeric_limits<double>::max();
-    double maxTime = 0.0;
-
-    for (const auto& result : results) {
-        totalConfidence += result.confidence;
-        totalTime += result.processingTime;
-        personCounts[result.predictedPerson]++;
-        
-        minConfidence = std::min(minConfidence, result.confidence);
-        maxConfidence = std::max(maxConfidence, result.confidence);
-        minTime = std::min(minTime, result.processingTime);
-        maxTime = std::max(maxTime, result.processingTime);
-    }
-
-    // Write statistics
-    file << "Overall Statistics:\n"
-         << "-----------------\n"
-         << "Total images processed: " << results.size() << "\n"
-         << "Average confidence: " << (totalConfidence / results.size()) << "\n"
-         << "Confidence range: " << minConfidence << " - " << maxConfidence << "\n"
-         << "Average processing time: " << (totalTime / results.size()) << " ms\n"
-         << "Processing time range: " << minTime << " - " << maxTime << " ms\n\n";
-
-    // Write predictions breakdown
-    file << "Predictions Breakdown:\n"
-         << "--------------------\n";
-    for (const auto& [person, count] : personCounts) {
-        double percentage = (100.0 * count) / results.size();
-        file << person << ": " << count << " images (" 
-             << std::fixed << std::setprecision(1) << percentage << "%)\n";
-    }
-    file << "\n";
-
-    // Write detailed results
-    file << "Detailed Results:\n"
-         << "---------------\n";
-    for (const auto& result : results) {
-        file << "File: " << result.filename << "\n"
-             << "  Predicted Person: " << result.predictedPerson << "\n"
-             << "  Confidence: " << std::fixed << std::setprecision(4) 
-             << result.confidence << "\n"
-             << "  Processing Time: " << result.processingTime << " ms\n\n";
+    catch (const std::exception& e) {
+        std::cerr << "Error generating report: " << e.what() << std::endl;
+        file << "\nError occurred while generating full report.\n";
     }
 }
 
+std::string BatchProcessor::extractConditionFromFilename(const std::string& filename) {
+    std::regex pattern("\\d{3}-(\\w+)-\\d+");
+    std::smatch matches;
+    if (std::regex_search(filename, matches, pattern) && matches.size() > 1) {
+        return matches[1].str();
+    }
+    return "unknown";
+}
 } // namespace gait

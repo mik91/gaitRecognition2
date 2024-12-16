@@ -15,14 +15,12 @@ std::vector<double> FeatureHandler::normalizeAndResampleFeatures(
         return std::vector<double>();
     }
 
-    // Don't resample, keep original feature size
     targetLength = frameFeatures[0].size();
     
-    // Compute mean features
     std::vector<double> meanFeatures(targetLength, 0.0);
     std::vector<double> stdFeatures(targetLength, 0.0);
     
-    // First pass: compute means
+    // compute means
     for (const auto& frame : frameFeatures) {
         for (size_t i = 0; i < targetLength; i++) {
             meanFeatures[i] += frame[i];
@@ -33,7 +31,7 @@ std::vector<double> FeatureHandler::normalizeAndResampleFeatures(
         val /= frameFeatures.size();
     }
     
-    // Second pass: compute std dev
+    // compute std dev
     for (const auto& frame : frameFeatures) {
         for (size_t i = 0; i < targetLength; i++) {
             double diff = frame[i] - meanFeatures[i];

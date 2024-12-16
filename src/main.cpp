@@ -12,7 +12,9 @@
 #include <iomanip>
 #include <numeric>
 
-// Frame processing results
+void trainingMode(gait::PathConfig& config, gait::GaitAnalyzer& analyzer, bool showVisualization, gait::GaitClassifier& classifier);
+void interactiveMode(gait::GaitAnalyzer& analyzer, gait::GaitClassifier& classifier, bool showVisualization);
+
 struct FrameProcessingResult {
     std::vector<double> features;
     std::string filename;
@@ -21,7 +23,7 @@ struct FrameProcessingResult {
 };
 
 void processSequenceParallel(
-    const std::string& subjectId,  // Add subjectId parameter
+    const std::string& subjectId,
     const std::vector<cv::Mat>& frames,
     const std::vector<std::string>& filenames, 
     gait::GaitAnalyzer& analyzer,
@@ -31,20 +33,19 @@ void processSequenceParallel(
     const size_t numThreads = std::thread::hardware_concurrency();
     const size_t windowSize = 30;
     const size_t windowStride = 15;
-    const size_t visualizationInterval = 10; // Show every 5th window
+    const size_t visualizationInterval = 10;
     std::mutex featuresMutex;
     std::mutex visualizationMutex;
     
     size_t windowCount = 0;
     
-    // Set window titles with subject ID
     if (showVisualization) {
         cv::setWindowTitle("Original Frame", "Original Frame - Subject " + subjectId);
         cv::setWindowTitle("Symmetry Map", "Symmetry Map - Subject " + subjectId);
-        // cv::setWindowTitle("Features", "Features - Subject " + subjectId);
+        cv::setWindowTitle("Features", "Features - Subject " + subjectId);
+        cv::setWindowTitle("Sobel Edges", "Sobel Edges - Subject " + subjectId);
     }
     
-    // Process overlapping windows of frames
     std::vector<std::future<std::vector<FrameProcessingResult>>> futures;
     
     for (size_t windowStart = 0; windowStart + windowSize <= frames.size(); 
@@ -72,7 +73,6 @@ void processSequenceParallel(
             }));
     }
     
-    // Process results as they complete
     for (auto& future : futures) {
         auto windowResults = future.get();
         windowCount++;
@@ -80,7 +80,6 @@ void processSequenceParallel(
         if (!windowResults.empty()) {
             std::lock_guard<std::mutex> lock(featuresMutex);
             
-            // Get normalized features for this window
             std::vector<std::vector<double>> windowFeatures;
             for (const auto& result : windowResults) {
                 if (!result.features.empty()) {
@@ -94,7 +93,6 @@ void processSequenceParallel(
                 sequenceFeatures.emplace_back(normalizedFeatures, windowResults[0].filename);
             }
             
-            // Show visualization periodically
             if (showVisualization && (windowCount % visualizationInterval == 0)) {
                 std::lock_guard<std::mutex> visLock(visualizationMutex);
                 gait::visualization::displayResults(
@@ -103,7 +101,6 @@ void processSequenceParallel(
                     windowResults[0].features
                 );
                 
-                // Add a small delay to make visualization visible
                 std::this_thread::sleep_for(std::chrono::milliseconds(30));
             }
         }
@@ -114,20 +111,17 @@ int main() {
     try {
         auto startTime = std::chrono::steady_clock::now();
         
-        // Initialize configuration
         auto& config = gait::PathConfig::getInstance();
         if (!config.loadConfig("")) {
             std::cerr << "Failed to initialize path configuration" << std::endl;
             return 1;
         }
 
-        // Initialize components
         gait::SymmetryParams analyzerParams(27.0, 90.0, 0.1);
         gait::GaitAnalyzer analyzer(analyzerParams);
         gait::ClassifierParams classifierParams(0.65, 7, 100.0, 0.5, 0.5);
         gait::GaitClassifier classifier(classifierParams);
 
-        // Ask user whether to train new model or load existing one
         std::cout << "Choose operation mode:\n"
                   << "1. Train new model\n"
                   << "2. Load existing model\n"
@@ -136,7 +130,6 @@ int main() {
         std::string modeChoice;
         std::getline(std::cin, modeChoice);
 
-        // Handle visualization setup
         bool showVisualization = false;
         if (modeChoice == "1" ) {
             std::cout << "Show visualization? (y/n): ";
@@ -151,67 +144,9 @@ int main() {
         }
 
         if (modeChoice == "1") {
-            // Training mode
-            gait::Loader loader(config.getPath("DATASET_ROOT"));
-            
-            std::cout << "\nLoading subject data...\n";
-            auto loadStart = std::chrono::steady_clock::now();
-            
-            auto allSubjectData = loader.loadAllSubjectsWithFilenames(true);
-            
-            auto loadEnd = std::chrono::steady_clock::now();
-            std::cout << "Data loading time: " 
-                      << std::chrono::duration_cast<std::chrono::seconds>(
-                             loadEnd - loadStart).count() << "s\n";
-
-            // Process and train as before...
-            std::map<std::string, std::vector<std::pair<std::vector<double>, 
-                    std::string>>> personFeatures;
-            size_t totalSubjects = allSubjectData.size();
-            size_t processedSubjects = 0;
-
-            loadStart = std::chrono::steady_clock::now();
-
-            for (const auto& [subjectId, data] : allSubjectData) {
-                std::vector<std::pair<std::vector<double>, std::string>> sequenceFeatures;
-                processSequenceParallel(subjectId, data.frames, data.filenames, analyzer, 
-                                    sequenceFeatures, showVisualization);
-                
-                if (!sequenceFeatures.empty()) {
-                    personFeatures[subjectId] = sequenceFeatures;
-                }
-
-                processedSubjects++;
-                float progress = (float)processedSubjects / totalSubjects * 100;
-                std::cout << "\rProcessing subject " << subjectId << " - Progress: " 
-                        << std::fixed << std::setprecision(1) << progress << "%" << std::flush;
-            }
-            
-            if (!personFeatures.empty()) {
-                std::cout << "\nTraining classifier...\n";
-                if (classifier.analyzePatterns(personFeatures)) {
-                    std::cout << "Saving model..." << std::endl;
-                    std::string modelPath = config.getPath("RESULTS_DIR") + "/gait_classifier.yml";
-                    try {
-                        classifier.saveModel(modelPath);
-                        std::cout << "Model saved successfully to: " << modelPath << std::endl;
-                    } catch (const std::exception& e) {
-                        std::cerr << "Error saving model: " << e.what() << std::endl;
-                    }
-                } else {
-                    std::cerr << "Failed to train classifier" << std::endl;
-                    return 1;
-                }
-            }
-
-            loadEnd = std::chrono::steady_clock::now();
-
-            std::cout << "Training time: " 
-                      << std::chrono::duration_cast<std::chrono::seconds>(
-                             loadEnd - loadStart).count() << "s\n";
+            trainingMode(config, analyzer, showVisualization, classifier);
         }
         else if (modeChoice == "2") {
-            // Load existing model
             std::string modelPath = config.getPath("RESULTS_DIR") + "/gait_classifier.yml";
             if (!classifier.loadModel(modelPath)) {
                 std::cerr << "Failed to load model from " << modelPath << std::endl;
@@ -224,62 +159,7 @@ int main() {
             return 1;
         }
 
-        // Interactive mode
-        bool continueRunning = true;
-        while (continueRunning) {
-            std::cout << "\nGait Analysis Options:\n"
-                    << "1. Analyze single image\n"
-                    << "2. Analyze folder\n"
-                    << "3. Exit\n"
-                    << "Choose option (1-3): ";
-            
-            std::string choice;
-            std::getline(std::cin, choice);
-
-            if (choice == "1") {
-                std::cout << "Enter image path: ";
-                std::string imagePath;
-                std::getline(std::cin, imagePath);
-
-                gait::PersonIdentifier identifier(analyzer, classifier);
-                try {
-                    auto [personId, confidence] = identifier.identifyFromImage(
-                        imagePath, showVisualization);
-                    std::cout << "\nAnalysis Results:\n"
-                            << "Identified Person: " << personId << "\n"
-                            << "Confidence: " << std::fixed << std::setprecision(4) 
-                            << confidence << "\n";
-                }
-                catch (const std::exception& e) {
-                    std::cerr << "Error processing image: " << e.what() << std::endl;
-                }
-            }
-            else if (choice == "2") {
-                std::cout << "Enter folder path: ";
-                std::string folderPath;
-                std::getline(std::cin, folderPath);
-
-                gait::BatchProcessor batchProcessor(analyzer, classifier);
-                try {
-                    std::cout << "\nProcessing folder...\n";
-                    auto results = batchProcessor.processDirectory(folderPath, showVisualization);
-                    
-                    if (results.empty()) {
-                        std::cout << "No valid images found in directory.\n";
-                    }
-                }
-                catch (const std::exception& e) {
-                    std::cerr << "Error processing folder: " << e.what() << std::endl;
-                }
-            }
-            else if (choice == "3") {
-                continueRunning = false;
-                std::cout << "Exiting...\n";
-            }
-            else {
-                std::cout << "Invalid choice. Please try again.\n";
-            }
-        }
+        interactiveMode(analyzer, classifier, showVisualization);
 
         if (showVisualization) {
             gait::visualization::cleanupWindows();
@@ -296,4 +176,146 @@ int main() {
     }
 
     return 0;
+}
+
+void trainingMode(gait::PathConfig &config, gait::GaitAnalyzer &analyzer, bool showVisualization, gait::GaitClassifier &classifier)
+{
+    gait::Loader loader(config.getPath("DATASET_ROOT"));
+
+    std::cout << "\nLoading subject data...\n";
+    auto loadStart = std::chrono::steady_clock::now();
+
+    auto allSubjectData = loader.loadAllSubjectsWithFilenames(true);
+
+    auto loadEnd = std::chrono::steady_clock::now();
+    std::cout << "Data loading time: "
+              << std::chrono::duration_cast<std::chrono::seconds>(
+                     loadEnd - loadStart)
+                     .count()
+              << "s\n";
+
+    std::map<std::string, std::vector<std::pair<std::vector<double>,
+                                                std::string>>>
+        personFeatures;
+    size_t totalSubjects = allSubjectData.size();
+    size_t processedSubjects = 0;
+
+    loadStart = std::chrono::steady_clock::now();
+
+    for (const auto &[subjectId, data] : allSubjectData)
+    {
+        std::vector<std::pair<std::vector<double>, std::string>> sequenceFeatures;
+        processSequenceParallel(subjectId, data.frames, data.filenames, analyzer,
+                                sequenceFeatures, showVisualization);
+
+        if (!sequenceFeatures.empty())
+        {
+            personFeatures[subjectId] = sequenceFeatures;
+        }
+
+        processedSubjects++;
+        float progress = (float)processedSubjects / totalSubjects * 100;
+        std::cout << "\rProcessing subject " << subjectId << " - Progress: "
+                  << std::fixed << std::setprecision(1) << progress << "%" << std::flush;
+    }
+
+    if (!personFeatures.empty())
+    {
+        std::cout << "\nTraining classifier...\n";
+        if (classifier.analyzePatterns(personFeatures))
+        {
+            std::cout << "Saving model..." << std::endl;
+            std::string modelPath = config.getPath("RESULTS_DIR") + "/gait_classifier.yml";
+            try
+            {
+                classifier.saveModel(modelPath);
+                std::cout << "Model saved successfully to: " << modelPath << std::endl;
+            }
+            catch (const std::exception &e)
+            {
+                std::cerr << "Error saving model: " << e.what() << std::endl;
+            }
+        }
+        else
+        {
+            std::cerr << "Failed to train classifier" << std::endl;
+        }
+    }
+
+    loadEnd = std::chrono::steady_clock::now();
+
+    std::cout << "Training time: "
+              << std::chrono::duration_cast<std::chrono::seconds>(
+                     loadEnd - loadStart)
+                     .count()
+              << "s\n";
+}
+
+void interactiveMode(gait::GaitAnalyzer &analyzer, gait::GaitClassifier &classifier, bool showVisualization)
+{
+    bool continueRunning = true;
+    while (continueRunning)
+    {
+        std::cout << "\nGait Analysis Options:\n"
+                  << "1. Analyze single image\n"
+                  << "2. Analyze folder\n"
+                  << "3. Exit\n"
+                  << "Choose option (1-3): ";
+
+        std::string choice;
+        std::getline(std::cin, choice);
+
+        if (choice == "1")
+        {
+            std::cout << "Enter image path: ";
+            std::string imagePath;
+            std::getline(std::cin, imagePath);
+
+            gait::PersonIdentifier identifier(analyzer, classifier);
+            try
+            {
+                auto [personId, confidence] = identifier.identifyFromImage(
+                    imagePath, showVisualization);
+                std::cout << "\nAnalysis Results:\n"
+                          << "Identified Person: " << personId << "\n"
+                          << "Confidence: " << std::fixed << std::setprecision(4)
+                          << confidence << "\n";
+            }
+            catch (const std::exception &e)
+            {
+                std::cerr << "Error processing image: " << e.what() << std::endl;
+            }
+        }
+        else if (choice == "2")
+        {
+            std::cout << "Enter folder path: ";
+            std::string folderPath;
+            std::getline(std::cin, folderPath);
+
+            gait::BatchProcessor batchProcessor(analyzer, classifier);
+            try
+            {
+                std::cout << "\nProcessing folder...\n";
+                auto results = batchProcessor.processDirectory(folderPath, showVisualization);
+
+                if (results.empty())
+                {
+                    std::cout << "No valid images found in directory.\n";
+                }
+            }
+            catch (const std::exception &e)
+            {
+                std::cerr << "Error processing folder: " << e.what() << std::endl;
+            }
+        }
+        else if (choice == "3")
+        {
+            continueRunning = false;
+            std::cout << "Exiting...\n";
+        }
+        else
+        {
+            std::cout << "Invalid choice. Please try again.\n";
+        }
+    }
 }

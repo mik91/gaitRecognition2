@@ -30,6 +30,7 @@ private:
     GaitClassifier& classifier_;
     void summarizeResults(const std::vector<ProcessingResult>& results);
     void writeSummaryReport(const std::vector<ProcessingResult>& results, std::ofstream& file);
+    std::string extractConditionFromFilename(const std::string& filename);
 };
 
 } // namespace gait
