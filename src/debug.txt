@@ -1,112 +1,72 @@
-nter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\001\nm-01\054
+// Test 4
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\004\bg-02\090
 
-Processing folder...
 
-Collecting files...
-Found 84 valid images
 
-Processing frames...
-Frame 81/84 (95%)
-Processed 84 frames successfully
+Found 69 valid images
+
+
+Frame 66/69 (94%)
+Processed 69 frames successfully
 
 Generating sequence features...
 Classifying sequence...
 
 Classification Results:
 ------------------------
-Predicted Person: test
-Confidence: 0.8385
+Predicted Person: test4
+Confidence: 0.8925
+Status: Strong match
 Classification time: 0 seconds
 
 Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
 
 Summary:
 --------
-Total images processed: 84
-Most likely match: test
-Confidence: 0.8385
+Total images processed: 69
+Most likely match: test4
+Confidence: 0.8925
 
-Gait Analysis Options:
-1. Analyze single image
-2. Analyze folder
-3. Exit
+
 Choose option (1-3): 2
-Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\001\nm-06\180
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\004\bg-02\180
 
-Processing folder...
 
-Collecting files...
-Found 68 valid images
+Found 98 valid images
 
-Processing frames...
-Frame 66/68 (95%)
-Processed 68 frames successfully
+Frame 96/98 (96%)
+Processed 98 frames successfully
 
 Generating sequence features...
 Classifying sequence...
 
 Classification Results:
 ------------------------
-Predicted Person: test
-Confidence: 0.0000
+Predicted Person: test4
+Confidence: 0.8958
+Status: Strong match
 Classification time: 0 seconds
 
 Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
 
 Summary:
 --------
-Total images processed: 68
-Most likely match: test
-Confidence: 0.0000
+Total images processed: 98
+Most likely match: test4
+Confidence: 0.8958
 
-Gait Analysis Options:
-1. Analyze single image
-2. Analyze folder
-3. Exit
+
 Choose option (1-3): 2
-Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\001\nm-01\126
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\004\cl-02\180
 
-Processing folder...
 
-Collecting files...
-Found 62 valid images
 
-Processing frames...
-Frame 61/62 (96%)
-Processed 62 frames successfully
+Found 39 valid images
 
-Generating sequence features...
-Classifying sequence...
 
-Classification Results:
-------------------------
-Predicted Person: test
-Confidence: 0.8933
-Classification time: 0 seconds
-
-Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
-
-Summary:
---------
-Total images processed: 62
-Most likely match: test
-Confidence: 0.8933
-
-Gait Analysis Options:
-1. Analyze single image
-2. Analyze folder
-3. Exit
-Choose option (1-3): 2
-Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\003\nm-01\162
-
-Processing folder...
-
-Collecting files...
-Found 83 valid images
-
-Processing frames...
-Frame 81/83 (96%)
-Processed 83 frames successfully
+Frame 36/39 (89%)
+Processed 39 frames successfully
 
 Generating sequence features...
 Classifying sequence...
@@ -114,30 +74,115 @@ Classifying sequence...
 Classification Results:
 ------------------------
 Predicted Person: test3
-Confidence: 0.8800
+Confidence: 0.8213
+Status: Moderate match
 Classification time: 0 seconds
 
 Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
 
 Summary:
 --------
-Total images processed: 83
+Total images processed: 39
 Most likely match: test3
-Confidence: 0.8800
+Confidence: 0.8213
 
-Gait Analysis Options:
-1. Analyze single image
-2. Analyze folder
-3. Exit
+
 Choose option (1-3): 2
-Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\003\nm-02\180
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\004\cl-02\090
 
-Processing folder...
 
-Collecting files...
+Found 69 valid images
+
+
+Frame 66/69 (94%)
+Processed 69 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test
+Confidence: 0.8798
+Status: Strong match
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 69
+Most likely match: test
+Confidence: 0.8798
+
+
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\004\nm-03\180
+
+
+
+Found 91 valid images
+
+
+Frame 91/91 (98%)
+Processed 91 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test4
+Confidence: 0.8818
+Status: Strong match
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 91
+Most likely match: test4
+Confidence: 0.8818
+
+// Test 3
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\004\nm-03\180
+
+
+
+Found 91 valid images
+
+
+Frame 91/91 (98%)
+Processed 91 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test4
+Confidence: 0.8818
+Status: Strong match
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 91
+Most likely match: test4
+Confidence: 0.8818
+
+
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\003\nm-03\180
+
+
+
 Found 89 valid images
 
-Processing frames...
+
 Frame 86/89 (95%)
 Processed 89 frames successfully
 
@@ -147,7 +192,8 @@ Classifying sequence...
 Classification Results:
 ------------------------
 Predicted Person: test3
-Confidence: 0.9493
+Confidence: 0.9496
+Status: Strong match
 Classification time: 0 seconds
 
 Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
@@ -156,54 +202,255 @@ Summary:
 --------
 Total images processed: 89
 Most likely match: test3
-Confidence: 0.9493
+Confidence: 0.9496
 
-Gait Analysis Options:
-1. Analyze single image
-2. Analyze folder
-3. Exit
+
 Choose option (1-3): 2
-Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\005\nm-06\180
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\003\cl-01\180
 
-Processing folder...
 
-Collecting files...
-Found 76 valid images
 
-Processing frames...
-Frame 76/76 (98%)
-Processed 76 frames successfully
+Found 85 valid images
+
+
+Frame 81/85 (94%)
+Processed 85 frames successfully
 
 Generating sequence features...
 Classifying sequence...
 
 Classification Results:
 ------------------------
-Predicted Person: test4
-Confidence: 0.0000
+Predicted Person: test3
+Confidence: 0.8411
+Status: Moderate match
 Classification time: 0 seconds
 
 Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
 
 Summary:
 --------
-Total images processed: 76
-Most likely match: test4
+Total images processed: 85
+Most likely match: test3
+Confidence: 0.8411
+
+
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\003\bg-02\072
+
+
+
+Found 69 valid images
+
+
+Frame 66/69 (94%)
+Processed 69 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test
+Confidence: 0.8585
+Status: Strong match
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 69
+Most likely match: test
+Confidence: 0.8585
+
+
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\003\bg-02\180
+
+
+
+Found 84 valid images
+
+
+Frame 81/84 (95%)
+Processed 84 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test3
+Confidence: 0.8405
+Status: Moderate match
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 84
+Most likely match: test3
+Confidence: 0.8405
+
+
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\003\nm-03\000
+
+
+
+Found 101 valid images
+
+
+Frame 101/101 (99%)
+Processed 101 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test3
+Confidence: 0.8607
+Status: Strong match
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 101
+Most likely match: test3
+Confidence: 0.8607
+
+// Test 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\002\002\nm-03\180
+
+
+
+Found 103 valid images
+
+
+Frame 101/103 (97%)
+Processed 103 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test2
+Confidence: 0.9497
+Status: Strong match
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 103
+Most likely match: test2
+Confidence: 0.9497
+
+
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\002\002\nm-06\180
+
+
+
+Found 87 valid images
+
+
+Frame 86/87 (97%)
+Processed 87 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test2
+Confidence: 0.9496
+Status: Strong match
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 87
+Most likely match: test2
+Confidence: 0.9496
+
+
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\002\002\nm-06\144
+
+
+
+Found 86 valid images
+
+
+Frame 86/86 (98%)
+Processed 86 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Result: Unknown/Rejected
+Reason: Low confidence match with test (possible different condition)
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 86
+Most likely match: test
 Confidence: 0.0000
 
-Gait Analysis Options:
-1. Analyze single image
-2. Analyze folder
-3. Exit
+
 Choose option (1-3): 2
-Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\004\nm-06\180
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\002\002\nm-06\054
 
-Processing folder...
 
-Collecting files...
+
+Found 106 valid images
+
+
+Frame 106/106 (99%)
+Processed 106 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test3
+Confidence: 0.8264
+Status: Moderate match
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 106
+Most likely match: test3
+Confidence: 0.8264
+
+
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\002\002\cl-02\180
+
+
+
 Found 88 valid images
 
-Processing frames...
+
 Frame 86/88 (96%)
 Processed 88 frames successfully
 
@@ -212,8 +459,9 @@ Classifying sequence...
 
 Classification Results:
 ------------------------
-Predicted Person: test4
-Confidence: 0.8962
+Predicted Person: test2
+Confidence: 0.8227
+Status: Moderate match
 Classification time: 0 seconds
 
 Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
@@ -221,5 +469,211 @@ Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT61
 Summary:
 --------
 Total images processed: 88
-Most likely match: test4
-Confidence: 0.8962
+Most likely match: test2
+Confidence: 0.8227
+
+
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\002\002\bg-02\180
+
+
+
+Found 59 valid images
+
+
+Frame 56/59 (93%)
+Processed 59 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test2
+Confidence: 0.9485
+Status: Strong match
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 59
+Most likely match: test2
+Confidence: 0.9485
+
+
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\002\002\bg-02\144
+
+
+
+Found 58 valid images
+
+
+Frame 56/58 (94%)
+Processed 58 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Result: Unknown/Rejected
+Reason: Low confidence match with test2 (possible different condition)
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 58
+Most likely match: test2
+Confidence: 0.0000
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\001\nm-05\180
+
+
+
+Found 81 valid images
+
+
+Frame 81/81 (98%)
+Processed 81 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test
+Confidence: 0.8421
+Status: Moderate match
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 81
+Most likely match: test
+Confidence: 0.8421
+
+
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\001\nm-05\090
+
+
+
+Found 56 valid images
+
+
+Frame 56/56 (98%)
+Processed 56 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test
+Confidence: 0.9473
+Status: Strong match
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 56
+Most likely match: test
+Confidence: 0.9473
+
+
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\001\nm-03\090
+
+
+
+Found 59 valid images
+
+
+Frame 56/59 (93%)
+Processed 59 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test
+Confidence: 0.8790
+Status: Strong match
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 59
+Most likely match: test
+Confidence: 0.8790
+
+
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\001\cl-02\144
+
+
+
+Found 73 valid images
+
+
+Frame 71/73 (95%)
+Processed 73 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test
+Confidence: 0.8395
+Status: Moderate match
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 73
+Most likely match: test
+Confidence: 0.8395
+
+
+Choose option (1-3): 2
+Enter folder path: C:\Users\kamar\Downloads\DatasetB-1\DatasetB-1\silhouettes\001\bg-02\180
+
+
+
+Found 75 valid images
+
+
+Frame 71/75 (93%)
+Processed 75 frames successfully
+
+Generating sequence features...
+Classifying sequence...
+
+Classification Results:
+------------------------
+Predicted Person: test
+Confidence: 0.8953
+Status: Strong match
+Classification time: 0 seconds
+
+Results saved to: "C:\\Users\\kamar\\OneDrive\\Documents\\UDEM\\Session 1\\IFT6150\\gaitRecognition2\\results/batch_results.txt"
+
+Summary:
+--------
+Total images processed: 75
+Most likely match: test
+Confidence: 0.8953

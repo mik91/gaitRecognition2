@@ -268,24 +268,7 @@ double GaitClassifier::computeConditionAwareConfidence(
     
     return confidence;
 }
-// 0.7 * baseConfidence + 0.3 * distanceConfidence;
-    // Calculate base confidence from match ratio
-    // double matchRatio = static_cast<double>(matchCount) / k;
-    // double avgMatchDistance = totalMatchDistance / matchCount;
-    
-    // // Calculate confidence using sigmoid function
-    // double baseConfidence = 1.0 / (1.0 + std::exp(-5.0 * (matchRatio - 0.5)));
-    
-    // // Adjust confidence based on distance
-    // double distanceConfidence = std::exp(-avgMatchDistance / params_.maxValidDistance);
-    
-    // // Final confidence calculation
-    // double confidence = 0.7 * baseConfidence + 0.3 * distanceConfidence;
-    
-    // // Add small bonus for condition match
-    // if (testCondition == distances[0].second.condition) {
-    //     confidence *= 1.1;
-    // }
+
 double GaitClassifier::computeMahalanobisDistance(
     const std::vector<double>& seq1,
     const std::vector<double>& seq2) const {
