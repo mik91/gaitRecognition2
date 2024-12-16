@@ -43,10 +43,8 @@ std::pair<std::string, double> PersonIdentifier::identifyFromImage(
         auto [personId, confidence] = classifier_.identifyPerson(accumulatedFeatures, 
                                                                std::filesystem::path(imagePath).filename().string());
 
-        if (visualize && !symmetryMaps.empty()) {
-            saveResults(inputImage, symmetryMaps[0], personId, confidence, outputDir);
-        }
-        
+        saveResults(inputImage, symmetryMaps[0], personId, confidence, outputDir);
+
         return {personId, confidence};
     }
     catch (const std::exception& e) {
