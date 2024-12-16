@@ -16,7 +16,7 @@ GaitAnalyzer::GaitAnalyzer(const SymmetryParams& params)
 
 cv::Mat GaitAnalyzer::processFrame(const cv::Mat& frame) {
     try {
-        // Handle CASIA_B silhouettes which are already binary
+        // (CASIA_B silhouettes are already binary)
         cv::Mat silhouette;
         if (frame.channels() == 3) {
             cv::cvtColor(frame, silhouette, cv::COLOR_BGR2GRAY);
@@ -24,11 +24,10 @@ cv::Mat GaitAnalyzer::processFrame(const cv::Mat& frame) {
             silhouette = frame.clone();
         }
 
-        // Enhanced preprocessing
         cv::medianBlur(silhouette, silhouette, 3);  // Remove noise
         cv::threshold(silhouette, silhouette, 127, 255, cv::THRESH_BINARY);
 
-        // Apply morphological operations for cleanup
+        // Morphological operations (cleanup)
         cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3,3));
         cv::morphologyEx(silhouette, silhouette, cv::MORPH_CLOSE, kernel);
         cv::morphologyEx(silhouette, silhouette, cv::MORPH_OPEN, kernel);
@@ -60,7 +59,7 @@ std::vector<double> GaitAnalyzer::extractGaitFeatures(const cv::Mat& symmetryMap
     }
     
     std::vector<double> features;
-    features.reserve(400); // Pre-allocate for efficiency
+    features.reserve(400);
     static bool firstCall = true;
 
     try {
@@ -89,7 +88,7 @@ std::vector<double> GaitAnalyzer::extractGaitFeatures(const cv::Mat& symmetryMap
                 double minVal, maxVal;
                 cv::minMaxLoc(regionMat, &minVal, &maxVal);
                 features.push_back(maxVal);
-                features.push_back(maxVal - minVal); // Range
+                features.push_back(maxVal - minVal);
             }
         }
         
@@ -172,9 +171,10 @@ std::vector<double> GaitAnalyzer::extractGaitFeatures(const cv::Mat& symmetryMap
                 absDevs.push_back(std::abs(f - median));
             }
             std::sort(absDevs.begin(), absDevs.end());
-            double mad = absDevs[absDevs.size() / 2] * 1.4826; // Scale factor for normal distribution
+            // Scale factor for normal distribution
+            double mad = absDevs[absDevs.size() / 2] * 1.4826; 
             
-            // Apply robust normalization
+            // Normalization
             for (double& f : features) {
                 f = (f - median) / (mad + 1e-10);
             }
@@ -208,10 +208,8 @@ cv::Mat GaitAnalyzer::computeSymmetryMap(const cv::Mat& edges,
 
     cv::Mat symmetryMap = cv::Mat::zeros(edges.size(), CV_32F);
     
-    // Extended search radius for better symmetry detection
     int searchRadius = std::min(50, std::min(edges.rows, edges.cols) / 2);
     
-    // Pre-compute gradient orientations and intensities
     cv::Mat gradientAngles(edges.size(), CV_32F);
     cv::Mat logIntensities(edges.size(), CV_32F);
     
@@ -223,11 +221,10 @@ cv::Mat GaitAnalyzer::computeSymmetryMap(const cv::Mat& edges,
         }
     }
     
-    // Lowered threshold for better edge detection
     const float edgeThreshold = 0.05f;
     
     // Process each point in the image
-    #pragma omp parallel for collapse(2)
+    #pragma omp parallel for collapse(2) 
     for (int y = searchRadius; y < edges.rows - searchRadius; y++) {
         for (int x = searchRadius; x < edges.cols - searchRadius; x++) {
             if (edges.at<float>(y, x) < edgeThreshold) continue;
@@ -283,52 +280,11 @@ cv::Mat GaitAnalyzer::computeSymmetryMap(const cv::Mat& edges,
     // Normalize symmetry map to [0,1] range
     double minVal, maxVal;
     cv::minMaxLoc(symmetryMap, &minVal, &maxVal);
+    
     if (maxVal > minVal) {
         symmetryMap = (symmetryMap - minVal) / (maxVal - minVal);
     }
     
     return symmetryMap;
 }
-
-void GaitAnalyzer::normalizeFeatures(std::vector<double>& features) {
-    if (features.empty()) return;
-    
-    // Compute robust statistics
-    std::vector<double> sortedFeatures = features;
-    std::sort(sortedFeatures.begin(), sortedFeatures.end());
-    
-    // Use median and MAD for robustness
-    double median = sortedFeatures[sortedFeatures.size() / 2];
-    
-    std::vector<double> absDevs;
-    absDevs.reserve(features.size());
-    for (double f : features) {
-        absDevs.push_back(std::abs(f - median));
-    }
-    std::sort(absDevs.begin(), absDevs.end());
-    double mad = absDevs[absDevs.size() / 2] * 1.4826; // Scale factor for normal distribution
-    
-    // Normalize using median and MAD
-    for (double& f : features) {
-        f = (f - median) / (mad + 1e-10);
-    }
-}
-
-double GaitAnalyzer::computePhaseWeight(double theta1, double theta2, double alpha) {
-    double gradientPhase = std::abs(theta1 - theta2);
-    double symmetryPhase = std::abs((theta1 + theta2 - 2 * alpha));
-    return (1.0 - std::cos(gradientPhase)) * (1.0 - std::cos(symmetryPhase));
-}
-
-double GaitAnalyzer::computeDistanceWeight(const cv::Point& p1, const cv::Point& p2) {
-    double distance = std::sqrt(std::pow(p2.x - p1.x, 2) + std::pow(p2.y - p1.y, 2));
-    double normFactor = 1.0 / std::sqrt(2.0 * M_PI * params_.sigma);
-    return normFactor * std::exp(-std::pow(distance - params_.mu, 2) / 
-                                (2.0 * std::pow(params_.sigma, 2)));
-}
-
-double GaitAnalyzer::computeLogIntensity(float edgeStrength) {
-    return std::log1p(edgeStrength);
-}
-
 } // namespace gait

@@ -16,11 +16,10 @@ bool Loader::validateCondition(const std::string& condition) {
     try {
         for (const auto& entry : fs::directory_iterator(datasetPath_)) {
             if (fs::is_directory(entry)) {
-                // For each subject directory, check if any sequence of this condition exists
                 for (int seq = 1; seq <= 6; seq++) {
                     std::string seqPath = condition + "-" + formatNumber(seq, 2);
                     if (fs::exists(entry.path() / seqPath)) {
-                        return true; // Found at least one instance of this condition
+                        return true;
                     }
                 }
             }
@@ -32,24 +31,20 @@ bool Loader::validateCondition(const std::string& condition) {
 }
 
 void Loader::scanDataset() {
-    // Clear any existing data
     conditions_.clear();
     subjectIds_.clear();
     conditionSequences_.clear();
     
-    // Standard conditions to check
     std::vector<std::string> potentialConditions = {"nm", "bg", "cl"};
     
     std::cout << "Scanning dataset path: " << datasetPath_ << std::endl;
     
     try {
-        // Verify dataset path exists
         if (!fs::exists(datasetPath_)) {
             std::cerr << "Dataset path does not exist: " << datasetPath_ << std::endl;
             return;
         }
 
-        // First, validate which conditions actually exist in the dataset
         for (const auto& condition : potentialConditions) {
             if (validateCondition(condition)) {
                 conditions_.push_back(condition);
@@ -59,7 +54,6 @@ void Loader::scanDataset() {
             }
         }
 
-        // Scan for subjects and their sequences in parallel
         std::mutex subjectMutex;
         std::vector<std::future<void>> futures;
 
@@ -69,7 +63,6 @@ void Loader::scanDataset() {
                     std::string subjectId = entry.path().filename().string();
                     std::map<std::string, int> localConditionSeqs;
                     
-                    // Scan conditions for this subject
                     for (const auto& condition : conditions_) {
                         int maxSeq = 1;
                         for (int seq = 1; seq <= 6; seq++) {
@@ -81,7 +74,6 @@ void Loader::scanDataset() {
                         localConditionSeqs[condition] = maxSeq;
                     }
 
-                    // Thread-safe update of shared data
                     {
                         std::lock_guard<std::mutex> lock(subjectMutex);
                         subjectIds_.push_back(subjectId);
@@ -165,7 +157,6 @@ std::map<std::string, Loader::SubjectData> Loader::loadAllSubjectsWithFilenames(
     std::mutex mapMutex;
     std::vector<std::future<void>> futures;
 
-    // Process subjects in parallel
     for (const auto& subjectId : subjectIds_) {
         futures.push_back(std::async(std::launch::async, [this, &allSubjectData, &mapMutex, 
                                     subjectId, includeAllConditions]() {
@@ -197,7 +188,6 @@ std::map<std::string, Loader::SubjectData> Loader::loadAllSubjectsWithFilenames(
         }));
     }
 
-    // Wait for all loading to complete
     for (auto& future : futures) {
         future.wait();
     }
@@ -213,18 +203,15 @@ std::string Loader::getSubjectPrefix(const std::string& subjectId,
     fs::path firstFrameDir = fs::path(datasetPath_) / subjectId / 
                             (condition + "-" + seqStr) / "000";
     
-    // std::cout << "Looking for subject prefix in: " << firstFrameDir << std::endl;
     
     if (!fs::exists(firstFrameDir) || !fs::is_directory(firstFrameDir)) {
         std::cout << "First frame directory does not exist: " << firstFrameDir << std::endl;
         return "";
     }
 
-    // Find first PNG file that matches the pattern XXX-condition-NN-000*.png
     for (const auto& entry : fs::directory_iterator(firstFrameDir)) {
         if (entry.path().extension() == ".png") {
             std::string filename = entry.path().filename().string();
-            // Extract first three digits before the first hyphen
             size_t firstHyphen = filename.find('-');
             if (firstHyphen != std::string::npos && firstHyphen >= 3) {
                 return filename.substr(0, 3);
@@ -247,7 +234,6 @@ int Loader::getMaxSequenceNumber(const std::string& condition) const {
     if (it != conditionSequences_.end()) {
         return it->second;
     }
-    // Return 1 as default if condition not found (backwards compatibility)
     std::cerr << "Warning: No sequence information found for condition: " << condition 
               << ". Defaulting to 1." << std::endl;
     return 1;
@@ -258,7 +244,6 @@ std::map<std::string, std::vector<cv::Mat>> Loader::loadAllSubjects(bool include
     std::mutex mapMutex;
     std::vector<std::future<void>> futures;
 
-    // Process subjects in parallel
     for (const auto& subjectId : subjectIds_) {
         futures.push_back(std::async(std::launch::async, [this, &allSubjectData, &mapMutex, 
                                     subjectId, includeAllConditions]() {
@@ -286,7 +271,6 @@ std::map<std::string, std::vector<cv::Mat>> Loader::loadAllSubjects(bool include
         }));
     }
 
-    // Wait for all loading to complete
     for (auto& future : futures) {
         future.wait();
     }
@@ -301,17 +285,14 @@ std::pair<std::vector<cv::Mat>, std::vector<std::string>> Loader::loadFramesPara
         return {{}, {}};
     }
 
-    // Calculate chunk size for each thread
     size_t totalFrames = framePaths.size();
     size_t framesPerThread = totalFrames / threadCount_;
     size_t remainingFrames = totalFrames % threadCount_;
 
-    // Prepare thread results
     std::vector<std::vector<cv::Mat>> threadFrames(threadCount_);
     std::vector<std::vector<std::string>> threadFilenames(threadCount_);
     std::vector<std::thread> threads;
 
-    // Launch threads
     for (size_t i = 0; i < threadCount_; ++i) {
         size_t startIdx = i * framesPerThread;
         size_t endIdx = (i + 1) * framesPerThread;
@@ -325,12 +306,10 @@ std::pair<std::vector<cv::Mat>, std::vector<std::string>> Loader::loadFramesPara
                            std::ref(threadFilenames[i]));
     }
 
-    // Wait for all threads to complete
     for (auto& thread : threads) {
         thread.join();
     }
 
-    // Combine results
     std::vector<cv::Mat> allFrames;
     std::vector<std::string> allFilenames;
     size_t totalLoadedFrames = 0;
@@ -365,11 +344,9 @@ void Loader::processFrameChunk(
     outputFilenames.reserve(endIdx - startIdx);
     
     for (size_t i = startIdx; i < endIdx; ++i) {
-        // Read image in grayscale mode
         cv::Mat frame = cv::imread(paths[i].string(), cv::IMREAD_GRAYSCALE);
         
         if (!frame.empty()) {
-            // Convert to 3-channel image if needed
             cv::Mat threeChannelFrame;
             cv::cvtColor(frame, threeChannelFrame, cv::COLOR_GRAY2BGR);
             outputFrames.push_back(threeChannelFrame);

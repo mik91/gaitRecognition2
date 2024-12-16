@@ -1,4 +1,3 @@
-// BatchProcessor.h
 #pragma once
 
 #include "GaitAnalyzer.h"
@@ -15,7 +14,7 @@ public:
         std::string filename;
         std::string predictedPerson;
         double confidence;
-        double processingTime;  // in milliseconds
+        double processingTime;
     };
 
     BatchProcessor(GaitAnalyzer& analyzer, GaitClassifier& classifier) 
@@ -24,7 +23,7 @@ public:
     std::vector<ProcessingResult> processDirectory(
         const std::string& inputDir,
         bool visualize = false,
-        const std::vector<std::string>& validExtensions = {".jpg", ".jpeg", ".png", ".bmp"});
+        const std::vector<std::string>& validExtensions = {".png"});
 
 private:
     GaitAnalyzer& analyzer_;

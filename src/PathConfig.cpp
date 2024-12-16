@@ -5,7 +5,6 @@
 namespace gait {
 
 bool PathConfig::loadConfig(const std::string& configFile) {
-    // Clear any existing paths
     paths_.clear();
     
     #ifdef _WIN32
@@ -18,14 +17,12 @@ bool PathConfig::loadConfig(const std::string& configFile) {
         paths_["RESULTS_DIR"] = "/u/kamarami/Documents/linux-gaitanalyzer/results";
     #endif
 
-    // Create results directory if it doesn't exist
     try {
         std::filesystem::create_directories(paths_["RESULTS_DIR"]);
     } catch (const std::exception& e) {
         std::cerr << "Error creating results directory: " << e.what() << std::endl;
     }
 
-    // Print loaded paths
     for (const auto& [key, value] : paths_) {
         std::cout << "Using path: " << key << " = " << value << std::endl;
     }
@@ -47,7 +44,7 @@ void PathConfig::setPath(const std::string& key, const std::string& path) {
 }
 
 bool PathConfig::savePaths() const {
-    return true; // No need to save since we're using hardcoded paths
+    return true;
 }
 
 } // namespace gait

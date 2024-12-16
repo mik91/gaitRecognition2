@@ -16,10 +16,10 @@ std::pair<std::string, double> PersonIdentifier::identifyFromImage(
     const std::string& imagePath,
     bool visualize) {
     
-    // Get default results directory from PathConfig
     auto& config = PathConfig::getInstance();
     std::filesystem::path outputDir(config.getPath("RESULTS_DIR"));
-    return identifyFromImage(imagePath, visualize, outputDir.string());
+    std::string outputDirStr = "results_" + std::to_string(std::time(nullptr));
+    return identifyFromImage(imagePath, visualize, outputDir.string() + "/" + outputDirStr);
 }
 
 std::pair<std::string, double> PersonIdentifier::identifyFromImage(
@@ -28,7 +28,6 @@ std::pair<std::string, double> PersonIdentifier::identifyFromImage(
     const std::string& outputDir) {
     
     try {
-        // Load and process image
         cv::Mat inputImage = cv::imread(imagePath);
         if (inputImage.empty()) {
             throw std::runtime_error("Failed to load image: " + imagePath);
@@ -41,11 +40,9 @@ std::pair<std::string, double> PersonIdentifier::identifyFromImage(
             throw std::runtime_error("Failed to extract features from image");
         }
 
-        // Use classifier with accumulated features
         auto [personId, confidence] = classifier_.identifyPerson(accumulatedFeatures, 
                                                                std::filesystem::path(imagePath).filename().string());
 
-        // Save results if visualization is requested
         if (visualize && !symmetryMaps.empty()) {
             saveResults(inputImage, symmetryMaps[0], personId, confidence, outputDir);
         }
@@ -70,7 +67,6 @@ std::pair<std::string, double> PersonIdentifier::identifyFromSequence(
         std::vector<cv::Mat> images;
         images.reserve(imagePaths.size());
 
-        // Load all images
         for (const auto& path : imagePaths) {
             cv::Mat img = cv::imread(path);
             if (!img.empty()) {
@@ -82,14 +78,12 @@ std::pair<std::string, double> PersonIdentifier::identifyFromSequence(
             throw std::runtime_error("No valid images loaded from sequence");
         }
 
-        // Process all images and accumulate features
         std::vector<double> accumulatedFeatures = processImages(images, visualize);
         
         if (accumulatedFeatures.empty()) {
             throw std::runtime_error("Failed to extract features from sequence");
         }
 
-        // Use first image path as reference for condition information
         return classifier_.identifyPerson(accumulatedFeatures, 
                                         std::filesystem::path(imagePaths[0]).filename().string());
     }
@@ -126,7 +120,6 @@ std::vector<double> PersonIdentifier::processImages(
         }
     }
 
-    // Use FeatureHandler to normalize and accumulate features
     return FeatureHandler::normalizeAndResampleFeatures(allFeatures);
 }
 
@@ -142,7 +135,6 @@ void PersonIdentifier::saveResults(
     try {
         std::filesystem::create_directories(resultDir);
         
-        // Create result visualization
         cv::Mat resultDisplay = inputImage.clone();
         std::string resultText = "Predicted: " + personId;
         std::string confidenceText = "Confidence: " + std::to_string(confidence);
@@ -152,12 +144,10 @@ void PersonIdentifier::saveResults(
         cv::putText(resultDisplay, confidenceText, cv::Point(20, 70), 
                     cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
 
-        // Save results
         cv::imwrite((resultDir / "result.png").string(), resultDisplay);
         cv::imwrite((resultDir / "symmetry_map.png").string(), 
                    visualization::visualizeSymmetryMap(symmetryMap));
         
-        // Save metadata
         std::time_t currentTime = std::time(nullptr);
         std::ofstream metaFile(resultDir / "metadata.txt");
         metaFile << "Prediction Results\n"
