@@ -52,6 +52,21 @@ cv::Mat GaitAnalyzer::processFrame(const cv::Mat& frame) {
         return cv::Mat();
     }
 }
+/**
+ * Implements symmetry-based gait recognition
+ * 
+ * This class analyzes human gait patterns using the Generalized Symmetry Operator.
+ * It processes input frames to detect symmetrical properties of walking motion,
+ * focusing on three key aspects:
+ * 
+ * 1. Regional Symmetry: Analyzes local symmetry patterns in image regions
+ * 2. Fourier Features: Captures global symmetry patterns using frequency analysis
+ * 3. Symmetry Profiles: Extracts vertical and horizontal symmetry distributions
+ * 
+ * Computes a symmetry map highlighting symmetric regions in 
+ * each frame, then extracts discriminative features combining local and global
+ * symmetry characteristics for gait recognition.
+ */
 
 std::vector<double> GaitAnalyzer::extractGaitFeatures(const cv::Mat& symmetryMap) {
     if (symmetryMap.empty()) {

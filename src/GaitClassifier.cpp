@@ -289,6 +289,9 @@ double GaitClassifier::computeMean(const std::vector<double>& values) const {
     return count > 0 ? sum / count : 0.0;
 }
 
+/*
+* Compute the median absolute deviation (MAD) of a set of values
+*/
 double GaitClassifier::computeStd(
     const std::vector<double>& values, double mean) const {
     
@@ -308,6 +311,9 @@ double GaitClassifier::computeStd(
     return 1.4826 * mad;
 }
 
+/*
+* Compute the covariance matrix of the training data
+*/
 void GaitClassifier::computeCovarianceMatrix() {
     if (trainingData_.empty() || trainingData_[0].empty()) {
         std::cerr << "Empty training data, cannot compute covariance matrix" << std::endl;
